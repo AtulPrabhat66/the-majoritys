@@ -349,17 +349,23 @@ function roomSize(mode) { return mode === "crowd" ? CROWD_SIZE : 2; }
 async function qadd(p, mode = "duel") {
   mode = mode === "crowd" ? "crowd" : "duel";
   p.mode = mode;
-  const warmup = await nextUniqueQuiz();
   const q = queues[mode];
   const target = roomSize(mode);
   if (!q.includes(p)) q.push(p);
+  // Put the player into the queue immediately; question generation must not delay matchmaking.
   send(p, "queue", {
     mode,
     position: q.filter(x => !x.isBot).indexOf(p) + 1,
     needed: Math.max(0, target - q.length),
     total: target,
-    warmup: { question: warmup.q, options: warmup.a }
+    waitHint: mode === "duel" ? "DUEL MATCHES USUALLY START IN A FEW SECONDS" : "CROWD MATCHES MAY TAKE A LITTLE LONGER"
   });
+  // Warm-up arrives as its own event so it can render while the queue is active.
+  nextUniqueQuiz().then(warmup => {
+    if (q.includes(p) && !p.room) {
+      send(p, "queue-warmup", { warmup: { question: warmup.q, options: warmup.a } });
+    }
+  }).catch(error => console.error("Queue warm-up question error:", error.message));
   matchmake(mode);
   if (!fillTimers[mode]) {
     fillTimers[mode] = setTimeout(() => {
