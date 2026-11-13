@@ -549,7 +549,8 @@ async function message(p, m) {
 }
 
 const server = http.createServer((req, res) => {
-  const path = (req.url || "/").split("?")[0];\n  if (path.startsWith("/api/")) return void authApi(req, res, path);
+  const path = (req.url || "/").split("?")[0];
+  if (path.startsWith("/api/")) return void authApi(req, res, path);
   if (path === "/health") {
     res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
     return res.end(JSON.stringify({
@@ -576,7 +577,7 @@ wss.on("connection", ws => {
   const p = { id: randomId(), ws, room: null, strike: 0, isBot: false, name: "Player" };
   send(p, "connected", { playerId: p.id, duelPlayers: 2, crowdPlayers: CROWD_SIZE });
   ws.on("message", raw => {
-    try { message(p, JSON.parse(raw.toString())); }
+    try { Promise.resolve(message(p, JSON.parse(raw.toString()))).catch(error => { console.error(error); send(p, "error", { message: "Could not process that action." }); }); }
     catch (error) { send(p, "error", { message: "Invalid message." }); }
   });
   ws.on("close", () => {
