@@ -180,6 +180,9 @@ body:before{opacity:.08;background-size:46px 46px}
 @keyframes arenaEnter{0%{opacity:0;transform:scale(.96) translateY(12px);filter:blur(5px)}100%{opacity:1;transform:scale(1);filter:blur(0)}}
 .screen.active .arena-panel{animation:arenaEnter .55s cubic-bezier(.2,.8,.2,1) both}
 @media(max-width:780px){.pod-grid{inset:5% 8%;gap:4px}.pod{width:80%}}
+
+/* Hide player identities during active matches */
+#roster,.player-row{display:none!important}
 </style>
 </head>
 <body>
