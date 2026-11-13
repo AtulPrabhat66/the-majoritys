@@ -52,25 +52,37 @@ const QUESTION_CONTEXTS = ["during the school year","in local communities","at w
 const QUESTION_TIMES = ["at school","after work","on weekends","during holidays","in the evening","throughout the year","in their free time","during group projects","before making decisions","while travelling"];
 const QUESTION_VERBS = ["using","learning","visiting","building","sharing","organizing","supporting","creating","studying","practising","exploring","improving"];
 const QUESTION_ALTERNATIVES = ["watching tutorials","reading instructions","learning from experience","working alone","asking an expert","joining a group","trying a new approach","using a digital tool","practising regularly","learning by teaching others"];
+const FICTIONAL_PLACES = ["the floating city of Aerilon","the hidden kingdom of Veyra","a city beneath the ocean","the last human colony on Mars","a village inside a giant forest","the crystal moon of Nym","a kingdom where memories are currency","a future city run by friendly robots","an island that moves every night","a library between dimensions"];
+const FICTIONAL_POWERS = ["time travel","speaking every language","controlling the weather","visiting parallel worlds","understanding animals","entering your own dreams","teleporting once a day","seeing possible futures","talking to fictional characters"];
+const FICTIONAL_RULES = ["everyone must tell the truth for one day","people can swap skills for 24 hours","memories can be saved like files","everyone gets one extra hour each day","robots can vote in elections","dreams can be explored like virtual worlds","people can visit one alternate timeline","every home has a tiny friendly dragon","books can answer questions"];
 function makeDebateCandidate() {
   const pick = list => list[randomInt(list.length)];
   const templates = [
-    () => `Should ${pick(QUESTION_GROUPS)} have more opportunities to ${pick(QUESTION_ACTIVITIES)}?`,
-    () => `Would everyday life improve if people had more ${pick(QUESTION_RESOURCES)}?`,
-    () => `Should people prioritize ${pick(QUESTION_VALUES)} over ${pick(QUESTION_VALUES)}?`,
-    () => `Is ${pick(QUESTION_ACTIVITIES)} a good way to ${pick(QUESTION_GOALS)}?`,
-    () => `Should schools teach more about ${pick(QUESTION_TOPICS)}?`,
-    () => `Would communities benefit from investing more in ${pick(QUESTION_RESOURCES)}?`,
-    () => `Should everyone try to develop ${pick(QUESTION_VALUES)}?`,
-    () => `Should ${pick(QUESTION_GROUPS)} have more opportunities to ${pick(QUESTION_ACTIVITIES)} ${pick(QUESTION_CONTEXTS)}?`,
-    () => `Is ${pick(QUESTION_VERBS)} ${pick(QUESTION_RESOURCES)} ${pick(QUESTION_TIMES)} useful for ${pick(QUESTION_GROUPS)}?`,
-    () => `Would ${pick(QUESTION_GROUPS)} benefit from ${pick(QUESTION_VERBS)} ${pick(QUESTION_RESOURCES)} ${pick(QUESTION_TIMES)}?`,
-    () => `Should ${pick(QUESTION_GROUPS)} be encouraged to ${pick(QUESTION_ACTIVITIES)} ${pick(QUESTION_CONTEXTS)}?`,
-    () => `Would ${pick(QUESTION_RESOURCES)} make it easier for ${pick(QUESTION_GROUPS)} to ${pick(QUESTION_GOALS)}?`,
-    () => `Is ${pick(QUESTION_ACTIVITIES)} a better way to ${pick(QUESTION_GOALS)} than ${pick(QUESTION_ALTERNATIVES)}?`,
-    () => `Should ${pick(QUESTION_GROUPS)} prioritize ${pick(QUESTION_VALUES)} ${pick(QUESTION_CONTEXTS)}?`,
-    () => `Should ${pick(QUESTION_GROUPS)} have the option to ${pick(QUESTION_ACTIVITIES)} ${pick(QUESTION_TIMES)}?`,
-    () => `Would people learn more about ${pick(QUESTION_TOPICS)} by ${pick(QUESTION_VERBS)} ${pick(QUESTION_RESOURCES)}?`
+    () => "Should " + pick(QUESTION_GROUPS) + " have more opportunities to " + pick(QUESTION_ACTIVITIES) + "?",
+    () => "Would everyday life improve if people had more " + pick(QUESTION_RESOURCES) + "?",
+    () => "Should people prioritize " + pick(QUESTION_VALUES) + " over " + pick(QUESTION_VALUES) + "?",
+    () => "Is " + pick(QUESTION_ACTIVITIES) + " a good way to " + pick(QUESTION_GOALS) + "?",
+    () => "Should schools teach more about " + pick(QUESTION_TOPICS) + "?",
+    () => "Would communities benefit from investing more in " + pick(QUESTION_RESOURCES) + "?",
+    () => "Should everyone try to develop " + pick(QUESTION_VALUES) + "?",
+    () => "Should " + pick(QUESTION_GROUPS) + " have more opportunities to " + pick(QUESTION_ACTIVITIES) + " " + pick(QUESTION_CONTEXTS) + "?",
+    () => "Is " + pick(QUESTION_VERBS) + " " + pick(QUESTION_RESOURCES) + " " + pick(QUESTION_TIMES) + " useful for " + pick(QUESTION_GROUPS) + "?",
+    () => "Would " + pick(QUESTION_GROUPS) + " benefit from " + pick(QUESTION_VERBS) + " " + pick(QUESTION_RESOURCES) + " " + pick(QUESTION_TIMES) + "?",
+    () => "Should " + pick(QUESTION_GROUPS) + " be encouraged to " + pick(QUESTION_ACTIVITIES) + " " + pick(QUESTION_CONTEXTS) + "?",
+    () => "Would " + pick(QUESTION_RESOURCES) + " make it easier for " + pick(QUESTION_GROUPS) + " to " + pick(QUESTION_GOALS) + "?",
+    () => "Is " + pick(QUESTION_ACTIVITIES) + " a better way to " + pick(QUESTION_GOALS) + " than " + pick(QUESTION_ALTERNATIVES) + "?",
+    () => "Would you explore " + pick(FICTIONAL_PLACES) + " if you could safely visit it?",
+    () => "Should people be allowed to use " + pick(FICTIONAL_POWERS) + " in everyday life?",
+    () => "Would society improve if " + pick(FICTIONAL_RULES) + "?",
+    () => "Would you choose to live in " + pick(FICTIONAL_PLACES) + " for a year?",
+    () => "Should a fantasy hero reveal a secret to save their kingdom?",
+    () => "Would a world with friendly robots making routine decisions be better?",
+    () => "Would you enter a mystery portal if you knew you could return safely?",
+    () => "Should a game allow players to rewrite one rule after every level?",
+    () => "Would a peaceful alien civilisation make a better neighbour than a human city?",
+    () => "Is exploring an unknown planet more exciting than discovering an ancient underwater city?",
+    () => "Should fictional kingdoms solve conflicts through competitions instead of battles?",
+    () => "Would you trade all your digital devices for one year in a magical library?"
   ];
   return templates[randomInt(templates.length)]();
 }
@@ -90,20 +102,39 @@ async function nextUniqueDebateQuestion() {
   throw new Error("Fresh debate questions temporarily unavailable; refusing to repeat a question.");
 }
 function makeArithmeticQuiz() {
-  const a = randomInt(900000) + 10000;
-  const b = randomInt(900000) + 10000;
+  const a = randomInt(900000) + 10000, b = randomInt(900000) + 10000;
   const subtract = randomInt(2) === 1;
-  const left = subtract ? Math.max(a,b) : a;
-  const right = subtract ? Math.min(a,b) : b;
-  const answer = subtract ? left - right : left + right;
-  const symbol = subtract ? "−" : "+";
+  const left = subtract ? Math.max(a,b) : a, right = subtract ? Math.min(a,b) : b;
+  const answer = subtract ? left-right : left+right;
   const options = new Set([answer]);
-  while (options.size < 4) {
-    const offset = randomInt(200) + 1;
-    options.add(Math.max(0, answer + (randomInt(2) ? offset : -offset)));
-  }
-  const shuffled = [...options].sort(() => Math.random() - 0.5);
-  return { q: `What is ${left.toLocaleString("en-US")} ${symbol} ${right.toLocaleString("en-US")}?`, a: shuffled.map(n => n.toLocaleString("en-US")), c: shuffled.indexOf(answer) };
+  while(options.size<4){const offset=randomInt(200)+1;options.add(Math.max(0,answer+(randomInt(2)?offset:-offset)));}
+  const shuffled=[...options].sort(()=>Math.random()-.5);
+  return {q:"What is "+left.toLocaleString("en-US")+" "+(subtract?"−":"+")+" "+right.toLocaleString("en-US")+"?",a:shuffled.map(n=>n.toLocaleString("en-US")),c:shuffled.indexOf(answer)};
+}
+function makeLogicQuiz() {
+  const first=randomInt(20)+3, step=randomInt(8)+2, answer=first+step*3;
+  const options=[answer,answer+step,answer-step,answer+step*2].sort(()=>Math.random()-.5);
+  return {q:"Complete the pattern: "+first+", "+(first+step)+", "+(first+step*2)+", ?",a:options.map(String),c:options.indexOf(answer)};
+}
+function makeRiddleQuiz() {
+  const items=[
+    {q:"What has keys but cannot open a lock?",a:["A piano","A map","A clock","A river"],c:0},
+    {q:"What gets wetter the more it dries?",a:["A towel","A cloud","A sponge","A shadow"],c:0},
+    {q:"What has a face and two hands but no arms or legs?",a:["A clock","A statue","A book","A mountain"],c:0},
+    {q:"What can travel around the world while staying in one corner?",a:["A postage stamp","A compass","A suitcase","A photograph"],c:0}
+  ];
+  return {...shufflePick(items)};
+}
+function makeFictionQuiz() {
+  const pick=list=>list[randomInt(list.length)];
+  const artefacts=["a silver compass","a glowing seed","a map of forgotten stars","a crystal key","a clockwork bird","a book of changing doors"];
+  const place=pick(FICTIONAL_PLACES), correct=pick(artefacts);
+  const wrong=artefacts.filter(x=>x!==correct).sort(()=>Math.random()-.5).slice(0,3);
+  const options=[correct,...wrong].sort(()=>Math.random()-.5);
+  return {q:"In an imaginary story set in "+place+", which object is the special artefact?",a:options,c:options.indexOf(correct)};
+}
+function makeGeneratedQuiz() {
+  return [makeArithmeticQuiz,makeLogicQuiz,makeRiddleQuiz,makeFictionQuiz][randomInt(4)]();
 }
 async function nextUniqueQuiz() {
   for (let i = 0; i < QUIZ.length * 2; i++) {
@@ -111,12 +142,12 @@ async function nextUniqueQuiz() {
     const reserved = await reserveUniqueQuestion(candidate, "quiz");
     if (reserved) return candidate;
   }
-  for (let i = 0; i < 100; i++) {
-    const candidate = makeArithmeticQuiz();
+  for (let i = 0; i < 500; i++) {
+    const candidate = makeGeneratedQuiz();
     const reserved = await reserveUniqueQuestion(candidate, "quiz");
     if (reserved) return candidate;
   }
-  throw new Error("Could not reserve a fresh quiz question.");
+  throw new Error("Could not reserve a fresh quiz question; repeats are disabled.");
 }
 
 const BOT_NAMES = [
@@ -315,9 +346,10 @@ function botAct(p, type) {
 }
 function roomSize(mode) { return mode === "crowd" ? CROWD_SIZE : 2; }
 
-function qadd(p, mode = "duel") {
+async function qadd(p, mode = "duel") {
   mode = mode === "crowd" ? "crowd" : "duel";
   p.mode = mode;
+  const warmup = await nextUniqueQuiz();
   const q = queues[mode];
   const target = roomSize(mode);
   if (!q.includes(p)) q.push(p);
@@ -325,7 +357,8 @@ function qadd(p, mode = "duel") {
     mode,
     position: q.filter(x => !x.isBot).indexOf(p) + 1,
     needed: Math.max(0, target - q.length),
-    total: target
+    total: target,
+    warmup: { question: warmup.q, options: warmup.a }
   });
   matchmake(mode);
   if (!fillTimers[mode]) {
@@ -576,7 +609,7 @@ async function message(p, m) {
       if (!account) return send(p, "error", { message: "Please sign up or log in before playing." });
       p.account = account;
       p.name = account.username;
-      qadd(p, m.mode);
+      await qadd(p, m.mode);
     }
     return;
   }
