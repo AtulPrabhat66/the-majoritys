@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#080b12">
+<meta name="theme-color" content="#0B0E14">
 <meta name="description" content="THE MAJORITY — read the room, pick a side, outlast the crowd.">
 <title>THE MAJORITY — The Arena</title>
 <style>
@@ -133,6 +133,53 @@ h1,h2,h3,p{margin-top:0}
 @media(max-width:780px){.hero{grid-template-columns:1fr;gap:0;min-height:0}.hero-copy{max-width:650px}.art-stage{min-height:255px;max-height:280px}.orbit{width:230px}.core{transform:scale(.8)}.float-label.one{right:8%}.float-label.two{left:8%}.lobby{grid-template-columns:1fr}.mode-card{min-height:0}.profile-card{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}.profile-card .card-label,.profile-card h3,.profile-card p{grid-column:1/-1}.profile-card .name-input{grid-column:1/-1}.profile-card .play-btn{grid-column:1/-1}.profile-card .small-note{grid-column:1/-1}}
 @media(max-width:520px){.shell{width:calc(100% - 28px)}.topbar{height:64px}.server-status{font-size:8px;letter-spacing:.08em}.brand-name{font-size:15px}main{padding-top:23px}.hero h1{font-size:clamp(63px,18vw,88px);margin:20px 0 16px}.hero-copy{font-size:12px}.hero-meta{gap:14px;margin-top:20px}.meta-item b{font-size:15px}.art-stage{min-height:220px}.orbit{width:205px}.core{transform:scale(.68)}.float-label{font-size:7px;padding:7px 9px}.section-head{align-items:start;flex-direction:column;gap:4px}.mode-card,.profile-card{padding:16px}.mode-grid{gap:8px}.mode{padding:12px;min-height:133px}.mode h3{font-size:21px}.mode p{font-size:9px}.mode .mode-icon{font-size:25px;right:9px;top:8px}.profile-card{display:block}.bottom-strip{grid-template-columns:1fr 1fr}.bottom-strip div:last-child{grid-column:1/-1}.arena-panel{padding:17px 13px;min-height:390px}.arena-head h2{font-size:20px}.timer{font-size:31px}.question{font-size:31px;margin:18px auto 24px}.vote-btn{height:63px;font-size:20px}.player-chip{font-size:8px;padding:6px 8px}.options{grid-template-columns:1fr}.choice-actions{gap:7px}.choice-actions button{font-size:14px}.screen-footer{font-size:8px}.queue-center,.result-center{padding:42px 8px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* THE MAJORITY: broadcast-arena visual pass */
+:root{color-scheme:dark;--bg:#0B0E14;--panel:#121722;--panel2:#1a2230;--line:#293548;--text:#f5f7fb;--muted:#929eaf;--ice:#00F0FF;--cyan:#00F0FF;--gold:#FFD700;--red:#FF2A5F;--green:#00F0FF}
+body{background:radial-gradient(ellipse at 50% -15%,#12333d 0,transparent 38%),radial-gradient(ellipse at 50% 100%,#29121f55 0,transparent 45%),#0B0E14}
+body:before{opacity:.08;background-size:46px 46px}
+.brand-mark{border-color:#00F0FF99;background:linear-gradient(145deg,#00F0FF24,#00F0FF04);box-shadow:0 0 30px #00F0FF28}
+.brand-mark span,.kicker,.eyebrow{color:#00F0FF}
+.hero h1 span{color:#00F0FF;text-shadow:0 0 38px #00F0FF55}
+.orbit{border-color:#00F0FF35;box-shadow:0 0 90px #00F0FF12,inset 0 0 50px #00F0FF10}
+.orbit:before,.orbit:after{border-color:#00F0FF22}
+.core-shape{border-color:#00F0FF99;background:linear-gradient(150deg,#00F0FF25,#102b36 48%,#090e17)}
+.core-letter{color:#00F0FF;text-shadow:0 0 35px #00F0FF}
+.float-label{border-color:#00F0FF55;background:#0b131de8;color:#d9fbff}
+.card{background:linear-gradient(145deg,#151c29ee,#0d121dee);border-color:#46566c55;box-shadow:0 20px 65px #0008,inset 0 1px #ffffff0b}
+.mode{background:#111824;border-color:#344154}
+.mode:hover,.mode.active{border-color:#00F0FF;background:linear-gradient(145deg,#12303a,#111824);box-shadow:inset 0 0 0 1px #00F0FF28,0 0 28px #00F0FF18}
+.mode .mode-number{color:#00F0FF}
+.mode.active:after{color:#00F0FF}
+.name-input:focus{border-color:#00F0FF;box-shadow:0 0 0 3px #00F0FF18}
+.play-btn{border-color:#00F0FF;background:linear-gradient(100deg,#00F0FF,#83f7ff);color:#071217;box-shadow:0 8px 32px #00F0FF25}
+.play-btn:hover:not(:disabled){box-shadow:0 12px 38px #00F0FF44}
+.vote-btn.yes{background:linear-gradient(130deg,#07343a,#0c252c);border-color:#00F0FF;color:#9ffaff}
+.vote-btn.no{background:linear-gradient(130deg,#3b1424,#26121c);border-color:#FF2A5F;color:#ff9bb5}
+.vote-btn.yes:hover:not(:disabled){box-shadow:0 10px 30px #00F0FF22}
+.vote-btn.no:hover:not(:disabled){box-shadow:0 10px 30px #FF2A5F22}
+.timer{color:#FFD700}
+.progress span{background:linear-gradient(90deg,#00F0FF,#FFD700);box-shadow:0 0 14px #00F0FF66}
+.player-chip.you{border-color:#00F0FF;color:#00F0FF;background:#103039}
+.win-title{color:#FFD700;text-shadow:0 0 40px #FFD70044}
+.loss-title{color:#FF2A5F}
+.secondary-btn:hover{border-color:#00F0FF}
+.radar{border-color:#00F0FF88;box-shadow:0 0 35px #00F0FF15}
+.radar:before,.radar:after{border-color:#00F0FF55}
+.radar span{color:#00F0FF}
+.status-dot.online{background:#00F0FF;box-shadow:0 0 14px #00F0FF}
+.tag{border-color:#40516a;background:#141c29}
+.question{font-weight:900;letter-spacing:.01em}
+.art-stage{isolation:isolate}
+.pod-grid{position:absolute;inset:7% 5%;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(7,1fr);gap:7px;transform:perspective(700px) rotateX(17deg) rotateZ(-4deg);opacity:.68;z-index:-1;mask-image:radial-gradient(ellipse,#000 35%,transparent 78%)}
+.pod{aspect-ratio:1;align-self:center;justify-self:center;width:75%;clip-path:polygon(25% 5%,75% 5%,100% 50%,75% 95%,25% 95%,0 50%);border:1px solid #00F0FF55;background:linear-gradient(145deg,#00F0FF20,#10202b);box-shadow:inset 0 0 12px #00F0FF20,0 0 12px #00F0FF18;animation:podPulse 3.8s ease-in-out infinite;animation-delay:var(--delay)}
+.pod:nth-child(5n){background:linear-gradient(145deg,#FF2A5F22,#25121e);border-color:#FF2A5F66;box-shadow:inset 0 0 12px #FF2A5F20,0 0 12px #FF2A5F18}
+.pod:nth-child(7n){background:linear-gradient(145deg,#FFD70022,#292314);border-color:#FFD70055}
+.queue-center{background:radial-gradient(ellipse at 50% 35%,#102c35,#0d121dee 65%)}
+@keyframes podPulse{0%,100%{opacity:.38;transform:translateY(0) scale(.94)}50%{opacity:1;transform:translateY(-3px) scale(1.04)}}
+@keyframes arenaEnter{0%{opacity:0;transform:scale(.96) translateY(12px);filter:blur(5px)}100%{opacity:1;transform:scale(1);filter:blur(0)}}
+.screen.active .arena-panel{animation:arenaEnter .55s cubic-bezier(.2,.8,.2,1) both}
+@media(max-width:780px){.pod-grid{inset:5% 8%;gap:4px}.pod{width:80%}}
 </style>
 </head>
 <body>
@@ -145,9 +192,9 @@ h1,h2,h3,p{margin-top:0}
 <section id="home" class="screen active">
 <div class="hero">
 <div>
-<div class="kicker">A GAME OF INSTINCT & INFLUENCE</div>
-<h1>READ THE<br><span>ROOM.</span></h1>
-<p class="hero-copy"><strong>One question. Two sides. One majority.</strong><br>Think like the crowd, trust your instinct, and survive every round. The smallest side disappears. Make your choice count.</p>
+<div class="kicker">ONE QUESTION · ONE MAJORITY · ONE WINNER</div>
+<h1>THE<br><span>MAJORITY.</span></h1>
+<p class="hero-copy"><strong>The crowd decides who survives.</strong><br>Read the room. Choose your side. Outlast every contender in a high-stakes battle of instinct and influence.</p>
 <div class="hero-meta">
 <div class="meta-item"><b>10 SECONDS</b><span>To make your choice</span></div>
 <div class="meta-item"><b>ONE WINNER</b><span>Per match</span></div>
@@ -155,8 +202,8 @@ h1,h2,h3,p{margin-top:0}
 </div>
 </div>
 <div class="art-stage" aria-hidden="true">
-<div class="orbit"></div><div class="core"><div class="core-shape"><span class="core-letter">M</span></div></div>
-<div class="float-label one">THE CROWD DECIDES</div><div class="float-label two">TRUST YOUR INSTINCT</div>
+<div class="pod-grid" id="podGrid" aria-hidden="true"></div><div class="orbit"></div><div class="core"><div class="core-shape"><span class="core-letter">M</span></div></div>
+<div class="float-label one">50 CONTENDERS · ONE SURVIVOR</div><div class="float-label two">THE ARENA IS WAITING</div>
 <i class="spark a"></i><i class="spark b"></i><i class="spark c"></i>
 </div>
 </div>
@@ -308,6 +355,9 @@ $("randomBtn").onclick=()=>{send("final-choice",{choice:"RANDOM"});$("repeatBtn"
 $("cancelQueue").onclick=()=>{desiredJoin=false;manuallyCancelled=true;clearInterval(timerInterval);const oldSocket=socket;socket=null;if(oldSocket&&oldSocket.readyState<2)oldSocket.close();show("home");status("offline","RECONNECTING");setTimeout(()=>{manuallyCancelled=false;connectSocket();},350);};
 $("playAgainBtn").onclick=()=>{show("home");desiredJoin=false;connectSocket();};
 $("outAgainBtn").onclick=()=>{show("home");desiredJoin=false;connectSocket();};
+// Build a 50-pod arena field; pods are visual only and never expose bot identities.
+const podGrid=$("podGrid");
+if(podGrid){for(let i=0;i<50;i++){const pod=document.createElement("i");pod.className="pod";pod.style.setProperty("--delay",(Math.random()*3.5).toFixed(2)+"s");podGrid.appendChild(pod);}}
 connectSocket();
 </script>
 </body>
