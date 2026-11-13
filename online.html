@@ -177,21 +177,21 @@ body:before{opacity:.08;background-size:46px 46px}
 .pod:nth-child(7n){background:linear-gradient(145deg,#FFD70022,#292314);border-color:#FFD70055}
 .queue-center{background:radial-gradient(ellipse at 50% 35%,#102c35,#0d121dee 65%)}
 @keyframes podPulse{0%,100%{opacity:.38;transform:translateY(0) scale(.94)}50%{opacity:1;transform:translateY(-3px) scale(1.04)}}
-@keyframes arenaEnter{0%{opacity:0;transform:scale(.96) translateY(12px);filter:blur(5px)}100%{opacity:1;transform:scale(1);filter:blur(0)}}
-.screen.active .arena-panel{animation:arenaEnter .55s cubic-bezier(.2,.8,.2,1) both}
+@keyframes questionReveal{0%{opacity:0;transform:translateY(16px) scale(.97);filter:blur(7px)}100%{opacity:1;transform:none;filter:none}}@keyframes screenFlash{0%{filter:brightness(1)}35%{filter:brightness(1.6)}100%{filter:brightness(1)}}@keyframes arenaEnter{0%{opacity:0;transform:scale(.96) translateY(12px);filter:blur(5px)}100%{opacity:1;transform:scale(1);filter:blur(0)}}
+.screen.active .arena-panel{animation:arenaEnter .55s cubic-bezier(.2,.8,.2,1) both}.question{animation:questionReveal .48s cubic-bezier(.2,.8,.2,1) both}.screen.active .queue-warmup{animation:questionReveal .65s .15s both}.arena-panel.impact{animation:screenFlash .35s ease}
 @media(max-width:780px){.pod-grid{inset:5% 8%;gap:4px}.pod{width:80%}}
 
 /* Hide player identities during active matches */
 #roster,.player-row{display:none!important}
 
-.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.auth-tab{height:38px;border:1px solid #354654;background:#0c1420;color:#91a0af;font:800 10px 'Barlow Condensed';letter-spacing:.18em}.auth-tab.active{border-color:#00F0FF;color:#00F0FF;background:#12303a}.auth-input{display:block;margin:9px 0}.account-welcome{padding:13px;background:#0c1c25;border:1px solid #00F0FF55;color:#a9c9cf;font-size:11px}.account-welcome strong{color:#00F0FF}.profile-card .secondary-btn{width:100%;margin:0 0 8px}.profile-card .play-btn{margin-top:10px}
+.top-actions{display:flex;align-items:center;gap:18px}.sound-toggle{border:1px solid #405665;background:#101a25;color:#b8e7ed;padding:8px 11px;font:800 9px "Barlow Condensed";letter-spacing:.14em}.sound-toggle.enabled{border-color:#b8e7ed;color:#08131a;background:#b8e7ed}.queue-warmup{margin:24px auto 12px;max-width:560px;padding:18px;text-align:left;border:1px solid #b8e7ed33;background:linear-gradient(120deg,#10232d,#111925)}.queue-warmup strong{display:block;margin:8px 0 12px;font:800 22px/1.15 "Barlow Condensed"}.queue-options{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.queue-option{padding:8px;border:1px solid #344a5a;background:#0a131e;color:#9eb0bc;font-size:10px}.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.auth-tab{height:38px;border:1px solid #354654;background:#0c1420;color:#91a0af;font:800 10px 'Barlow Condensed';letter-spacing:.18em}.auth-tab.active{border-color:#00F0FF;color:#00F0FF;background:#12303a}.auth-input{display:block;margin:9px 0}.profile-card.authenticated .auth-tabs,.profile-card.authenticated #authHeading,.profile-card.authenticated #authDescription,.profile-card.authenticated #authNote{display:none!important}.profile-card.authenticated #accountReady{display:block!important}.account-welcome{padding:13px;background:#0c1c25;border:1px solid #00F0FF55;color:#a9c9cf;font-size:11px}.account-welcome strong{color:#00F0FF}.profile-card .secondary-btn{width:100%;margin:0 0 8px}.profile-card .play-btn{margin-top:10px}
 </style>
 </head>
 <body>
 <div class="shell">
 <nav class="topbar">
 <a class="brand" href="#" aria-label="The Majority home"><span class="brand-mark"><span>M</span></span><span class="brand-name">THE MAJORITY<small>THE SOCIAL SURVIVAL ARENA</small></span></a>
-<div class="server-status"><span class="status-dot" id="statusDot"></span><span id="statusText">CONNECTING TO ARENA</span></div>
+<div class="top-actions"><button class="sound-toggle" id="soundToggle" type="button" aria-pressed="false">♫ SOUND OFF</button><div class="server-status"><span class="status-dot" id="statusDot"></span><span id="statusText">CONNECTING TO ARENA</span></div></div>
 </nav>
 <main>
 <section id="home" class="screen active">
@@ -254,7 +254,7 @@ body:before{opacity:.08;background-size:46px 46px}
 <div class="radar"><span>M</span></div><div class="eyebrow">SEARCHING FOR MATCH</div>
 <h2 id="queueTitle">ENTERING THE ARENA</h2>
 <p id="queueText">Finding your opponents and preparing the match.</p>
-<div class="queue-count" id="queueCount">MATCHMAKING IN PROGRESS</div>
+<div class="queue-count" id="queueCount">MATCHMAKING IN PROGRESS</div><div class="queue-warmup" id="queueWarmup"><span class="eyebrow">QUEUE WARM-UP</span><strong id="queueQuestion">A fresh question will appear while you wait.</strong><div class="queue-options" id="queueOptions"></div></div>
 <button class="secondary-btn" id="cancelQueue" type="button">CANCEL MATCHMAKING</button>
 </div>
 </section>
@@ -401,7 +401,7 @@ async function submitAuth(){
   const res=await fetch("/api/"+authMode,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
   const data=await res.json();if(!res.ok)throw new Error(data.error||"Account request failed.");
   authToken=data.token;localStorage.setItem("majority_session",authToken);
-  $("accountUsername").textContent=data.account.username;$("authFields").classList.add("hidden");$("accountReady").classList.remove("hidden");
+  $("accountUsername").textContent=data.account.username;$("authFields").classList.add("hidden");$("accountReady").classList.remove("hidden");document.querySelector(".profile-card").classList.add("authenticated");
   $("authHeading").textContent="ACCOUNT READY";$("authDescription").textContent="Your player identity is saved. Choose a mode and press PLAY.";
   $("authNote").textContent="Keep your login details private.";
   status(socket&&socket.readyState===WebSocket.OPEN?"online":"offline",socket&&socket.readyState===WebSocket.OPEN?"ARENA ONLINE":"CONNECTING TO ARENA");
@@ -421,7 +421,7 @@ $("signupTab").onclick=()=>setAuthMode("signup");$("loginTab").onclick=()=>setAu
 $("authConfirm").addEventListener("keydown",e=>{if(e.key==="Enter")submitAuth();});
 $("authPassword").addEventListener("keydown",e=>{if(e.key==="Enter")submitAuth();});
 $("logoutBtn").onclick=async()=>{try{await fetch("/api/logout",{method:"POST",headers:{authorization:"Bearer "+authToken}});}catch{}
- authToken="";localStorage.removeItem("majority_session");$("accountReady").classList.add("hidden");$("authFields").classList.remove("hidden");
+ authToken="";localStorage.removeItem("majority_session");$("accountReady").classList.add("hidden");$("authFields").classList.remove("hidden");document.querySelector(".profile-card").classList.remove("authenticated");
  $("authPassword").value="";$("authConfirm").value="";setAuthMode("signup");$("authHeading").textContent="CREATE YOUR ACCOUNT";$("authDescription").textContent="Sign up once. Your player identity will be saved across sessions.";
  status(socket&&socket.readyState===WebSocket.OPEN?"online":"offline","ARENA ONLINE");};
 
