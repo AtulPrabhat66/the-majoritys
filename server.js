@@ -6,7 +6,7 @@ const QUIZ=[{q:"Which planet is known as the Red Planet?",a:["Venus","Mars","Jup
 const server=http.createServer((req,res)=>{if(req.url==="/health"){res.writeHead(200,{"content-type":"application/json"});return res.end(JSON.stringify({ok:true,service:"the-majority",rooms:rooms.size,queued:queue.length}));}res.end("THE MAJORITY multiplayer server is running.");});
 const wss=new WebSocketServer({server,maxPayload:2048});
 function send(p,type,data={}){if(p.ws.readyState===WebSocket.OPEN)p.ws.send(JSON.stringify({type,...data}));}
-function cast(r,type,data={}){for(const p of r.players.values())send(p,type,data);}
+function cast(r,type,data={}){for(const p of r.players.values())if(r.alive.has(p.id)||type==="match-result"||type==="match-closed")send(p,type,data);}
 function qadd(p){if(!queue.includes(p))queue.push(p);send(p,"queue",{position:queue.length,needed:Math.max(0,SIZE-queue.length)});matchmake();}
 function matchmake(){while(queue.length>=SIZE){const batch=queue.splice(0,SIZE).filter(p=>p.ws.readyState===WebSocket.OPEN);if(batch.length<2){batch.forEach(qadd);continue;}const r={id:crypto.randomUUID().slice(0,8),players:new Map(batch.map(p=>[p.id,p])),alive:new Set(batch.map(p=>p.id)),phase:"vote",round:0,votes:new Map(),timer:null,final:null,quick:null};rooms.set(r.id,r);batch.forEach(p=>p.room=r.id);startVote(r);}}
 function startVote(r){clearTimeout(r.timer);r.phase="vote";r.round++;r.votes.clear();r.question=QUESTIONS[crypto.randomInt(QUESTIONS.length)];cast(r,"round",{round:r.round,alive:r.alive.size,total:r.players.size,seconds:SECONDS,question:r.question});r.timer=setTimeout(()=>resolveVote(r),SECONDS*1000);}
