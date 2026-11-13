@@ -479,8 +479,10 @@ async function message(p, m) {
   if (!m || typeof m !== "object") return;
   if (m.type === "join") {
     if (!p.room) {
-      const requestedName = String(m.name || "").trim().replace(/[^a-zA-Z0-9 _-]/g, "").slice(0, 16);
-      if (requestedName) p.name = requestedName;
+      const account = await accountForToken(m.token);
+      if (!account) return send(p, "error", { message: "Please sign up or log in before playing." });
+      p.account = account;
+      p.name = account.username;
       qadd(p, m.mode);
     }
     return;
