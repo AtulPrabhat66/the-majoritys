@@ -219,7 +219,7 @@ body:before{opacity:.08;background-size:46px 46px}
 #endCard.defeat{border-color:#ff2a5f99;box-shadow:0 0 45px #ff2a5f18,inset 0 0 55px #ff2a5f0b;animation:defeatDrop .65s ease both}
 #endCard.victory .win-title{animation:crownGlow 1.5s ease-in-out infinite alternate}
 #endCard.defeat .loss-title{animation:lossPulse 1.4s ease-in-out infinite}
-@keyframes victoryPop{0%{opacity:0;transform:translateY(24px) scale(.94);filter:brightness(1.8)}65%{transform:translateY(-4px) scale(1.015)}100%{opacity:1;transform:none;filter:none}}
+#outCard.defeat{border-color:#ff2a5f99;box-shadow:0 0 45px #ff2a5f18,inset 0 0 55px #ff2a5f0b;animation:defeatDrop .65s ease both}#outCard.defeat .loss-title{animation:lossPulse 1.4s ease-in-out infinite}@keyframes victoryPop{0%{opacity:0;transform:translateY(24px) scale(.94);filter:brightness(1.8)}65%{transform:translateY(-4px) scale(1.015)}100%{opacity:1;transform:none;filter:none}}
 @keyframes confettiDrift{0%,100%{transform:translateY(-8px) rotate(0);opacity:.25}50%{transform:translateY(10px) rotate(8deg);opacity:.8}}
 @keyframes crownGlow{from{text-shadow:0 0 18px #ffd70044}to{text-shadow:0 0 48px #ffd700bb,0 0 85px #ffd70044}}
 @keyframes defeatDrop{0%{opacity:0;transform:translateY(-12px) scale(1.02);filter:grayscale(.7)}65%{transform:translateY(3px)}100%{opacity:1;transform:none;filter:none}}
@@ -364,7 +364,7 @@ body:before{opacity:.08;background-size:46px 46px}
 </div>
 </section>
 <section id="outScreen" class="screen">
-<div class="card arena-panel result-center">
+<div class="card arena-panel result-center" id="outCard">
 <div class="eyebrow">YOUR RUN HAS ENDED</div><div class="loss-title">ELIMINATED</div>
 <p id="outMessage">You did not survive this round.</p>
 <button class="play-btn" id="outAgainBtn" type="button">PLAY AGAIN · SAME MODE ↗</button>
@@ -417,7 +417,7 @@ function handle(m){
  if(m.type==="round"){stopQueueClock();clearInterval(timerInterval);soundEvent("reveal");resetOptions();show("gameScreen");$("phaseTitle").textContent="THE CROWD IS DECIDING";$("roundTag").textContent="ROUND "+String(m.round).padStart(2,"0");$("questionKicker").textContent="ONE QUESTION. CHOOSE YOUR SIDE."; $("question").textContent=m.question;$("aliveCount").textContent="PLAYERS REMAINING: "+m.alive;$("yesBtn").disabled=false;$("noBtn").disabled=false;$("gameHint").textContent="Your vote is private. Once submitted, it cannot be changed.";startTimer(m.seconds||10);return;}
  if(m.type==="vote-locked"){soundEvent("lock");$("yesBtn").disabled=true;$("noBtn").disabled=true;$("gameHint").textContent="VOTE LOCKED · "+m.vote;return;}
  if(m.type==="round-result"){clearInterval(timerInterval);soundEvent("reveal");show("resultScreen");$("resultTitle").textContent=m.tied?"THE ROOM IS DIVIDED":"THE MAJORITY HAS SPOKEN";$("resultMessage").textContent=m.message;$("yesCount").textContent=m.yes;$("noCount").textContent=m.no;$("remainingCount").textContent=m.alive;$("resultSub").textContent=m.tied?"No voting side is eliminated. The round will repeat.":"The smaller side has been eliminated. Prepare for the next round.";return;}
- if(m.type==="eliminated"){clearInterval(timerInterval);soundEvent("eliminate");$("outMessage").textContent=m.message||"Your run has ended.";show("outScreen");return;}
+ if(m.type==="eliminated"){clearInterval(timerInterval);soundEvent("eliminate");$("outCard").classList.remove("defeat");void $("outCard").offsetWidth;$("outCard").classList.add("defeat");$("outMessage").textContent=m.message||"Your run has ended.";show("outScreen");return;}
  if(m.type==="final-question"){clearInterval(timerInterval);soundEvent("reveal");show("gameScreen");$("phaseTitle").textContent="THE FINAL TWO";$("roundTag").textContent="FINAL ROUND";$("questionKicker").textContent="YOUR QUESTION IS UNIQUE";$("question").textContent=m.question;$("aliveCount").textContent="TWO FINALISTS REMAIN";$("gameHint").textContent="Answer correctly to claim victory.";makeOptions(m.options,"final-answer");return;}
  if(m.type==="answer-locked"){$("answerOptions").querySelectorAll("button").forEach(x=>x.disabled=true);$("gameHint").textContent="ANSWER LOCKED · WAITING FOR THE FINAL RESULT";return;}
  if(m.type==="final-choice"){show("choiceScreen");$("repeatBtn").disabled=false;$("randomBtn").disabled=false;$("choiceHint").textContent=m.message||"Choose how the final should be decided.";return;}
