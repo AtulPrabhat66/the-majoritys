@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10131d">
+<title>THE MAJORITY</title>
+<style>
+:root{color-scheme:dark;--bg:#10131d;--panel:#191e2c;--line:#2c3448;--text:#f4f6fb;--muted:#9da8bd;--cyan:#56d6e8;--pink:#ff6488;--gold:#ffd166}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -20%,#293451 0,transparent 55%),var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;display:grid;place-items:center;padding:22px}
+main{width:min(760px,100%)}header{text-align:center;margin-bottom:24px}.eyebrow{color:var(--cyan);letter-spacing:.22em;font-size:.72rem;font-weight:800}h1{font-size:clamp(2.6rem,9vw,5rem);line-height:1;margin:10px 0;letter-spacing:-.06em}h1 span{color:var(--cyan)}.sub{color:var(--muted);margin:0}
+.panel{background:linear-gradient(145deg,#1d2434,#151a27);border:1px solid var(--line);border-radius:22px;padding:clamp(18px,4vw,32px);box-shadow:0 24px 80px #0005}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.pill{border:1px solid var(--line);border-radius:99px;padding:6px 12px;color:var(--muted);font-size:.82rem}.pill strong{color:var(--text)}
+h2{font-size:1.55rem;margin:16px 0 8px}.muted{color:var(--muted)}.center{text-align:center}.big{font-size:clamp(1.4rem,4vw,2.1rem);font-weight:800;line-height:1.25;margin:22px 0}
+button{border:0;border-radius:14px;padding:14px 18px;font:700 1rem system-ui;cursor:pointer;transition:transform .15s,filter .15s}button:hover{filter:brightness(1.1);transform:translateY(-1px)}button:disabled{opacity:.45;cursor:not-allowed;transform:none}.primary{background:var(--cyan);color:#07141a}.yes{background:#1b9b8d;color:white;flex:1}.no{background:#c64b70;color:white;flex:1}.secondary{background:#2b3448;color:var(--text)}.gold{background:var(--gold);color:#211a08}.actions{display:flex;gap:12px;margin-top:18px}.actions button{min-width:0}.hidden{display:none!important}
+.timer{font-size:2.3rem;font-weight:900;color:var(--gold);font-variant-numeric:tabular-nums}.track{height:9px;background:#30384b;border-radius:99px;overflow:hidden;margin:10px 0 20px}.bar{height:100%;background:linear-gradient(90deg,var(--cyan),var(--gold));width:100%;transition:width .2s}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0}.stat{background:#111724;border:1px solid var(--line);padding:12px;border-radius:14px;text-align:center}.stat b{display:block;font-size:1.4rem}.stat small{color:var(--muted)}
+.notice{background:#111724;border:1px solid var(--line);border-radius:14px;padding:13px;color:var(--muted);font-size:.9rem;margin-top:18px}
+.result{font-size:1.1rem;font-weight:700;margin:16px 0}.choice{border:1px solid var(--line);border-radius:14px;padding:14px;margin:8px 0;background:#111724}.choice strong{color:var(--cyan)}footer{text-align:center;color:#738099;font-size:.78rem;margin:18px 0 0}
+@media(max-width:480px){.stats{gap:6px}.stat{padding:9px 5px}.stat b{font-size:1.15rem}.actions{gap:8px}.actions button{padding:13px 10px}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="eyebrow">ONE QUESTION. ONE MAJORITY.</div><h1>THE <span>MAJORITY</span></h1><p class="sub">Survive the crowd. Make it to the final two.</p></header>
+<section class="panel">
+<div id="home">
+<div class="row"><span class="pill">GAME MODE <strong>ELIMINATION</strong></span><span class="pill">PLAYERS <strong>50</strong></span></div>
+<h2>Can you think like the majority?</h2>
+<p class="muted">Every round, choose YES or NO. The smaller side is eliminated. Keep surviving until only two players remain.</p>
+<div class="stats"><div class="stat"><b>50</b><small>Starting players</small></div><div class="stat"><b>10s</b><small>Answer time</small></div><div class="stat"><b>1</b><small>Winner</small></div></div>
+<button class="primary" id="startBtn" style="width:100%">START GAME</button>
+<div class="notice"><strong>Prototype notice:</strong> This version uses simulated opponents on your device. Real online matchmaking and live multiplayer will be added in the server phase.</div>
+</div>
+<div id="game" class="hidden">
+<div class="row"><span class="pill" id="roundLabel">ROUND 1</span><span class="pill">ALIVE <strong id="alive">50</strong></span><span class="timer" id="timer">10</span></div>
+<div class="track"><div class="bar" id="bar"></div></div>
+<p class="muted center" id="instruction">Choose the side you think will get more votes.</p>
+<div class="big center" id="question">Would you rather explore space or the deep ocean?</div>
+<div class="actions"><button class="yes" id="yesBtn">YES</button><button class="no" id="noBtn">NO</button></div>
+<p class="muted center" id="voteStatus">Your choice is private until voting closes.</p>
+</div>
+<div id="result" class="hidden center">
+<div class="eyebrow">ROUND RESULT</div><h2 id="resultTitle">You survived!</h2><p class="result" id="resultText"></p>
+<div class="stats"><div class="stat"><b id="yesCount">0</b><small>YES votes</small></div><div class="stat"><b id="noCount">0</b><small>NO votes</small></div><div class="stat"><b id="remaining">0</b><small>Still alive</small></div></div>
+<button class="primary" id="continueBtn" style="width:100%">CONTINUE</button>
+</div>
+<div id="final" class="hidden">
+<div class="eyebrow center">THE FINAL TWO</div><h2 class="center">Two players. Different questions.</h2>
+<p class="muted center">Your answer and the rival's answer are judged separately. If the results match, choose how to settle it.</p>
+<div class="choice"><strong>Your question</strong><p id="yourFinalQ"></p><p class="muted" id="yourFinalA"></p></div>
+<div class="choice"><strong>Rival's question</strong><p id="rivalFinalQ"></p><p class="muted" id="rivalFinalA"></p></div>
+<div class="notice" id="finalOutcome"></div>
+<div class="actions"><button class="secondary" id="repeatBtn">REPEAT</button><button class="gold" id="randomBtn">RANDOM WINNER</button></div>
+<button class="primary hidden" id="quickBtn" style="width:100%;margin-top:12px">START QUICK QUESTION</button>
+</div>
+<div id="quick" class="hidden center">
+<div class="eyebrow">SUDDEN DEATH</div><h2>QUICK QUESTION</h2><div class="row"><span class="pill">YOU <strong id="myScore">0</strong></span><span class="pill">FIRST TO 10 WINS</span><span class="pill">RIVAL <strong id="rivalScore">0</strong></span></div>
+<div class="big" id="quickQ">Which planet is known as the Red Planet?</div><div id="quickOptions" class="actions" style="flex-wrap:wrap"></div><p class="muted" id="quickFeedback">Answer correctly to score a point.</p>
+</div>
+<div id="end" class="hidden center"><div class="eyebrow">MATCH COMPLETE</div><h2 id="endTitle">YOU WIN!</h2><p class="muted" id="endText">You made it through the majority.</p><button class="primary" id="againBtn" style="width:100%">PLAY AGAIN</button></div>
+</section>
+<footer>THE MAJORITY · EARLY PLAYABLE BUILD</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const questions=["Would you rather explore space or the deep ocean?","Should school uniforms be optional?","Is it better to be very early than slightly late?","Should every city have more public parks?","Is teamwork more important than individual talent?","Would you rather have more free time or more money?","Should people be allowed to work from anywhere?","Is reading books better than watching their movie versions?","Should public transport be free?","Would you rather live near the mountains or the sea?"];
+const quiz=[{q:"Which planet is known as the Red Planet?",a:["Venus","Mars","Jupiter","Mercury"],c:1},{q:"How many sides does a hexagon have?",a:["5","6","7","8"],c:1},{q:"Which ocean is the largest?",a:["Atlantic","Indian","Pacific","Arctic"],c:2},{q:"What is the chemical symbol for water?",a:["CO2","O2","H2O","NaCl"],c:2},{q:"Which animal is the largest living mammal?",a:["Elephant","Blue whale","Giraffe","Orca"],c:1}];
+let alive=50,round=0,pick=null,tick=null,seconds=10,quickMine=0,quickRival=0,quickIndex=0,finalRound=0;
+function show(id){["home","game","result","final","quick","end"].forEach(x=>$(x).classList.toggle("hidden",x!==id))}
+function start(){alive=50;round=0;show("game");nextRound()}
+function nextRound(){round++;pick=null;seconds=10;$("roundLabel").textContent="ROUND "+round;$("alive").textContent=alive;$("question").textContent=questions[Math.floor(Math.random()*questions.length)];$("voteStatus").textContent="Your choice is private until voting closes.";$("yesBtn").disabled=$("noBtn").disabled=false;updateTimer();clearInterval(tick);tick=setInterval(()=>{seconds--;updateTimer();if(seconds<=0){clearInterval(tick);resolveRound()}},1000)}
+function updateTimer(){$("timer").textContent=seconds;$("bar").style.width=(seconds/10*100)+"%"}
+function choose(v){if(pick!==null)return;pick=v;$("yesBtn").disabled=$("noBtn").disabled=true;$("voteStatus").textContent="Vote locked: "+v+". Waiting for the round to close…"}
+function resolveRound(){let yes=Math.floor(Math.random()*(alive+1)),no=alive-yes;if(yes===no){$("resultTitle").textContent="It's a tie!";$("resultText").textContent="No one is eliminated. The round will repeat."; $("remaining").textContent=alive}else{let majority=yes>no?"YES":"NO";let eliminated=Math.min(Math.abs(yes-no),alive-2);let survived=pick===majority;alive=Math.max(2,alive-eliminated);$("resultTitle").textContent=survived?"You survived!":"You were on the smaller side";$("resultText").textContent="The majority chose "+majority+". "+eliminated+" simulated players eliminated."; $("remaining").textContent=alive} $("yesCount").textContent=yes;$("noCount").textContent=no;$("continueBtn").textContent=alive<=2?"GO TO THE FINAL":"NEXT ROUND";show("result")}
+function finalDuel(){show("final");const a=quiz[Math.floor(Math.random()*quiz.length)],b=quiz[(quiz.indexOf(a)+1)%quiz.length];$("yourFinalQ").textContent=a.q;$("yourFinalA").textContent="Your simulated answer: "+a.a[Math.floor(Math.random()*4)];$("rivalFinalQ").textContent=b.q;$("rivalFinalA").textContent="Rival's simulated answer: "+b.a[Math.floor(Math.random()*4)];let me=Math.random()<.5,them=Math.random()<.5;finalRound++;$("finalOutcome").textContent=me!==them?(me?"You answered correctly. You win!":"The rival answered correctly. You lose."):"Both players got the same result. Choose REPEAT or RANDOM WINNER, or disagree to enter Quick Question."; $("repeatBtn").classList.toggle("hidden",me!==them);$("randomBtn").classList.toggle("hidden",me!==them);$("quickBtn").classList.toggle("hidden",me!==them);if(me!==them)setTimeout(()=>finish(me),1600)}
+function finish(win){clearInterval(tick);let streak=Number(localStorage.getItem("tm_streak")||0);if(win){streak++;localStorage.setItem("tm_streak",streak)}else localStorage.setItem("tm_streak",0);$("endTitle").textContent=win?"YOU WIN!":"RIVAL WINS";$("endText").textContent=win?"Your current win streak: "+streak:"Your win streak has reset. Play another match.";show("end")}
+function quickStart(){quickMine=0;quickRival=0;quickIndex=0;show("quick");loadQuick()}
+function loadQuick(){$("myScore").textContent=quickMine;$("rivalScore").textContent=quickRival;const q=quiz[quickIndex%quiz.length];$("quickQ").textContent=q.q;$("quickOptions").innerHTML="";q.a.forEach((v,i)=>{const b=document.createElement("button");b.className="secondary";b.textContent=v;b.style.flex="1 1 42%";b.onclick=()=>answerQuick(i,q.c);$("quickOptions").appendChild(b)});$("quickFeedback").textContent="Answer correctly to score a point."}
+function answerQuick(i,c){const correct=i===c;if(correct)quickMine++;if(Math.random()<.45)quickRival++;$("quickFeedback").textContent=correct?"Correct! You scored a point.": "Not quite. No point this time.";if(quickMine>=10||quickRival>=10){finish(quickMine>=10&&quickMine>quickRival);return}quickIndex++;setTimeout(loadQuick,650)}
+$("startBtn").onclick=start;$("yesBtn").onclick=()=>choose("YES");$("noBtn").onclick=()=>choose("NO");$("continueBtn").onclick=()=>alive<=2?finalDuel():nextRound();$("repeatBtn").onclick=finalDuel;$("randomBtn").onclick=()=>finish(Math.random()<.5);$("quickBtn").onclick=quickStart;$("againBtn").onclick=()=>show("home");
+</script>
+</body>
+</html>
