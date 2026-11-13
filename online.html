@@ -207,7 +207,7 @@ body:before{opacity:.08;background-size:46px 46px}
 <i class="spark a"></i><i class="spark b"></i><i class="spark c"></i>
 </div>
 </div>
-<div class="section-head"><h2>ENTER THE ARENA</h2><p>Choose your battlefield. The match begins when you are ready.</p></div>
+<div class="section-head"><h2>PLAY</h2><p>Choose a mode, set your player name, and jump straight into the match.</p></div>
 <div class="lobby">
 <div class="card mode-card">
 <div class="card-label">01 / SELECT GAME MODE</div>
@@ -221,8 +221,8 @@ body:before{opacity:.08;background-size:46px 46px}
 <h3>ENTER YOUR NAME</h3>
 <p>This is how other players will see you in the arena.</p>
 <input class="name-input" id="playerName" maxlength="16" autocomplete="nickname" placeholder="Your player name">
-<button class="play-btn" id="playBtn" type="button" disabled>ENTER THE ARENA <span aria-hidden="true">↗</span></button>
-<p class="small-note" id="connectionNote">Connecting to the game server. You can enter as soon as the arena is online.</p>
+<button class="play-btn" id="playBtn" type="button" disabled>PLAY <span aria-hidden="true">↗</span></button>
+<p class="small-note" id="connectionNote">Getting the arena ready… PLAY will unlock when the server is available.</p>
 </div>
 </div>
 <div class="bottom-strip">
@@ -299,7 +299,7 @@ const screens=["home","queueScreen","gameScreen","resultScreen","choiceScreen","
 let socket=null,selectedMode="duel",playerId=null,playerName="",matchMode="duel",timerInterval=null,secondsLeft=10,desiredJoin=false,manuallyCancelled=false,retryDelay=1200,retryTimer=null,lastRoster=[];
 function show(id){screens.forEach(s=>$(s).classList.toggle("active",s===id));window.scrollTo({top:0,behavior:"smooth"});}
 function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2300);}
-function status(kind,msg){$("statusDot").className="status-dot "+kind;$("statusText").textContent=msg;$("playBtn").disabled=kind!=="online";$("connectionNote").textContent=kind==="online"?"Arena online. Choose your mode and enter the match.":kind==="offline"?"Connection lost. Reconnecting to the arena…":"Connecting to the game server. You can enter as soon as the arena is online.";}
+function status(kind,msg){$("statusDot").className="status-dot "+kind;$("statusText").textContent=msg;$("playBtn").disabled=kind!=="online";$("connectionNote").textContent=kind==="online"?"Arena ready. Choose your mode and press PLAY.":kind==="offline"?"Connection lost. Reconnecting to the arena…":"Getting the arena ready… PLAY will unlock when the server is available.";}
 function wsAddress(){return (location.protocol==="https:"?"wss://":"ws://")+location.host;}
 function connectSocket(){
  if(!location.host){status("offline","OPEN THE GAME LINK");$("connectionNote").textContent="Open the hosted game link to connect to the arena.";return;}
