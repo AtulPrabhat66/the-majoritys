@@ -315,7 +315,7 @@ const $=id=>document.getElementById(id);
 const screens=["home","queueScreen","gameScreen","resultScreen","choiceScreen","resultEndScreen","outScreen"];
 let authToken=localStorage.getItem("majority_session")||"",authMode="signup",socket=null,selectedMode="duel",playerId=null,playerName="",matchMode="duel",timerInterval=null,secondsLeft=10,desiredJoin=false,manuallyCancelled=false,retryDelay=1200,retryTimer=null,lastRoster=[];
 function show(id){screens.forEach(s=>$(s).classList.toggle("active",s===id));window.scrollTo({top:0,behavior:"smooth"});}
-function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2300);}
+let soundEnabled=false,audioCtx=null;function playTone(freq,duration,type,gain){if(!soundEnabled)return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type||"sine";o.frequency.value=freq;g.gain.setValueAtTime(gain||.025,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+duration);}catch{}}function soundEvent(k){if(k==="lock"){playTone(660,.08,"square");setTimeout(()=>playTone(880,.1,"sine"),75);}if(k==="reveal"){playTone(220,.2,"sawtooth");setTimeout(()=>playTone(330,.16,"triangle"),100);}if(k==="win"){[523,659,784].forEach((f,i)=>setTimeout(()=>playTone(f,.2,"triangle"),i*100));}if(k==="eliminate"){playTone(145,.28,"sawtooth");setTimeout(()=>playTone(90,.2,"sawtooth"),120);}}function renderQueueWarmup(w){if(!w||!w.question)return;$("queueQuestion").textContent=w.question;$("queueOptions").innerHTML="";(w.options||[]).forEach((v,i)=>{const e=document.createElement("div");e.className="queue-option";e.textContent=String.fromCharCode(65+i)+" · "+v;$("queueOptions").appendChild(e);});}function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2300);}
 function status(kind,msg){$("statusDot").className="status-dot "+kind;$("statusText").textContent=msg;$("playBtn").disabled=kind!=="online"||!authToken;$("connectionNote").textContent=kind==="online"?"Arena ready. Choose your mode and press PLAY.":kind==="offline"?"Connection lost. Reconnecting to the arena…":"Getting the arena ready… PLAY will unlock when the server is available.";}
 function wsAddress(){return (location.protocol==="https:"?"wss://":"ws://")+location.host;}
 function connectSocket(){
@@ -345,12 +345,12 @@ function makeOptions(options,kind){const wrap=$("answerOptions");wrap.innerHTML=
 function resetOptions(){$("answerOptions").classList.add("hidden");$("answerOptions").innerHTML="";$("voteActions").classList.remove("hidden");}
 function handle(m){
  if(m.type==="connected"){playerId=m.playerId;return;}
- if(m.type==="queue"){$("queueTitle").textContent=matchMode==="duel"?"FINDING YOUR DUEL":"FINDING THE CROWD";$("queueCount").textContent=m.position?"POSITION "+m.position+" · "+m.needed+" SPOTS LEFT":"MATCHMAKING";$("queueText").textContent="Assembling the arena. Stay ready.";return;}
+ if(m.type==="queue"){renderQueueWarmup(m.warmup);$("queueTitle").textContent=matchMode==="duel"?"FINDING YOUR DUEL":"FINDING THE CROWD";$("queueCount").textContent=m.position?"POSITION "+m.position+" · "+m.needed+" SPOTS LEFT":"MATCHMAKING";$("queueText").textContent="Assembling the arena. Stay ready.";return;}
  if(m.type==="match-found"){matchMode=m.mode;renderRoster(m.roster);$("matchType").textContent=m.mode==="duel"?"THE MAJORITY / DUEL":"THE MAJORITY / "+m.total+" CONTENDERS";return;}
- if(m.type==="round"){clearInterval(timerInterval);resetOptions();show("gameScreen");$("phaseTitle").textContent="THE CROWD IS DECIDING";$("roundTag").textContent="ROUND "+String(m.round).padStart(2,"0");$("questionKicker").textContent="ONE QUESTION. CHOOSE YOUR SIDE."; $("question").textContent=m.question;$("aliveCount").textContent="PLAYERS REMAINING: "+m.alive;$("yesBtn").disabled=false;$("noBtn").disabled=false;$("gameHint").textContent="Your vote is private. Once submitted, it cannot be changed.";startTimer(m.seconds||10);return;}
- if(m.type==="vote-locked"){$("yesBtn").disabled=true;$("noBtn").disabled=true;$("gameHint").textContent="VOTE LOCKED · "+m.vote;return;}
- if(m.type==="round-result"){clearInterval(timerInterval);show("resultScreen");$("resultTitle").textContent=m.tied?"THE ROOM IS DIVIDED":"THE MAJORITY HAS SPOKEN";$("resultMessage").textContent=m.message;$("yesCount").textContent=m.yes;$("noCount").textContent=m.no;$("remainingCount").textContent=m.alive;$("resultSub").textContent=m.tied?"No voting side is eliminated. The round will repeat.":"The smaller side has been eliminated. Prepare for the next round.";return;}
- if(m.type==="eliminated"){clearInterval(timerInterval);$("outMessage").textContent=m.message||"Your run has ended.";show("outScreen");return;}
+ if(m.type==="round"){clearInterval(timerInterval);soundEvent("reveal");resetOptions();show("gameScreen");$("phaseTitle").textContent="THE CROWD IS DECIDING";$("roundTag").textContent="ROUND "+String(m.round).padStart(2,"0");$("questionKicker").textContent="ONE QUESTION. CHOOSE YOUR SIDE."; $("question").textContent=m.question;$("aliveCount").textContent="PLAYERS REMAINING: "+m.alive;$("yesBtn").disabled=false;$("noBtn").disabled=false;$("gameHint").textContent="Your vote is private. Once submitted, it cannot be changed.";startTimer(m.seconds||10);return;}
+ if(m.type==="vote-locked"){soundEvent("lock");$("yesBtn").disabled=true;$("noBtn").disabled=true;$("gameHint").textContent="VOTE LOCKED · "+m.vote;return;}
+ if(m.type==="round-result"){clearInterval(timerInterval);soundEvent("reveal");show("resultScreen");$("resultTitle").textContent=m.tied?"THE ROOM IS DIVIDED":"THE MAJORITY HAS SPOKEN";$("resultMessage").textContent=m.message;$("yesCount").textContent=m.yes;$("noCount").textContent=m.no;$("remainingCount").textContent=m.alive;$("resultSub").textContent=m.tied?"No voting side is eliminated. The round will repeat.":"The smaller side has been eliminated. Prepare for the next round.";return;}
+ if(m.type==="eliminated"){clearInterval(timerInterval);soundEvent("eliminate");$("outMessage").textContent=m.message||"Your run has ended.";show("outScreen");return;}
  if(m.type==="final-question"){clearInterval(timerInterval);show("gameScreen");$("phaseTitle").textContent="THE FINAL TWO";$("roundTag").textContent="FINAL ROUND";$("questionKicker").textContent="YOUR QUESTION IS UNIQUE";$("question").textContent=m.question;$("aliveCount").textContent="TWO FINALISTS REMAIN";$("gameHint").textContent="Answer correctly to claim victory.";makeOptions(m.options,"final-answer");return;}
  if(m.type==="answer-locked"){$("answerOptions").querySelectorAll("button").forEach(x=>x.disabled=true);$("gameHint").textContent="ANSWER LOCKED · WAITING FOR THE FINAL RESULT";return;}
  if(m.type==="final-choice"){show("choiceScreen");$("repeatBtn").disabled=false;$("randomBtn").disabled=false;$("choiceHint").textContent=m.message||"Choose how the final should be decided.";return;}
@@ -358,7 +358,7 @@ function handle(m){
  if(m.type==="quick-question"){show("gameScreen");$("phaseTitle").textContent="SUDDEN DEATH";$("roundTag").textContent="FIRST TO 10";$("questionKicker").textContent="QUICK QUESTION · SPEED COUNTS";$("question").textContent=m.question;$("aliveCount").textContent="FINALISTS: 2";$("gameHint").textContent="Correct answers score. If both are correct, the faster answer scores.";makeOptions(m.options,"quick-answer");return;}
  if(m.type==="quick-answer-result"){$("gameHint").textContent=m.correct?(m.point?"CORRECT · POINT SCORED":"CORRECT · OPPONENT WAS FASTER"):"INCORRECT · NO POINT";return;}
  if(m.type==="quick-result"){const scores=m.scores||{};$("gameHint").textContent=m.message||"Next question loading…";return;}
- if(m.type==="match-result"){clearInterval(timerInterval);desiredJoin=false;show("resultEndScreen");$("endTitle").textContent=m.winner?"VICTORY":"DEFEAT";$("endTitle").className=m.winner?"win-title":"loss-title";$("endMessage").textContent=m.winner?"You outlasted the arena. Your run continues.":"The arena has chosen. Return stronger for the next match."; $("streakValue").textContent=m.strike||0;return;}
+ if(m.type==="match-result"){clearInterval(timerInterval);soundEvent(m.winner?"win":"eliminate");desiredJoin=false;show("resultEndScreen");$("endTitle").textContent=m.winner?"VICTORY":"DEFEAT";$("endTitle").className=m.winner?"win-title":"loss-title";$("endMessage").textContent=m.winner?"You outlasted the arena. Your run continues.":"The arena has chosen. Return stronger for the next match."; $("streakValue").textContent=m.strike||0;return;}
  if(m.type==="match-closed"){desiredJoin=false;return;}
  if(m.type==="error"){toast(m.message||"Something went wrong.");}
 }
@@ -366,8 +366,8 @@ $("modeDuel").onclick=()=>{selectedMode="duel";$("modeDuel").classList.add("acti
 $("modeCrowd").onclick=()=>{selectedMode="crowd";$("modeCrowd").classList.add("active");$("modeDuel").classList.remove("active");};
 $("playBtn").onclick=()=>{desiredJoin=true;joinMatch();};
 
-$("yesBtn").onclick=()=>send("vote",{vote:"YES"});
-$("noBtn").onclick=()=>send("vote",{vote:"NO"});
+$("yesBtn").onclick=()=>{soundEvent("lock");send("vote",{vote:"YES"});};
+$("noBtn").onclick=()=>{soundEvent("lock");send("vote",{vote:"NO"});};
 $("repeatBtn").onclick=()=>{send("final-choice",{choice:"REPEAT"});$("repeatBtn").disabled=true;$("randomBtn").disabled=true;};
 $("randomBtn").onclick=()=>{send("final-choice",{choice:"RANDOM"});$("repeatBtn").disabled=true;$("randomBtn").disabled=true;};
 $("cancelQueue").onclick=()=>{desiredJoin=false;manuallyCancelled=true;clearInterval(timerInterval);const oldSocket=socket;socket=null;if(oldSocket&&oldSocket.readyState<2)oldSocket.close();show("home");status("offline","RECONNECTING");setTimeout(()=>{manuallyCancelled=false;connectSocket();},350);};
@@ -385,6 +385,7 @@ $("outAgainBtn").onclick=playAgain;
 const podGrid=$("podGrid");
 if(podGrid){for(let i=0;i<50;i++){const pod=document.createElement("i");pod.className="pod";pod.style.setProperty("--delay",(Math.random()*3.5).toFixed(2)+"s");podGrid.appendChild(pod);}}
 connectSocket();
+$("soundToggle").onclick=()=>{soundEnabled=!soundEnabled;$("soundToggle").classList.toggle("enabled",soundEnabled);$("soundToggle").textContent=soundEnabled?"♫ SOUND ON":"♫ SOUND OFF";$("soundToggle").setAttribute("aria-pressed",String(soundEnabled));if(soundEnabled){playTone(660,.12,"sine");toast("Arena sound enabled.");}else toast("Arena sound muted.");};
 
 function setAuthMode(mode){
  authMode=mode;$("signupTab").classList.toggle("active",mode==="signup");$("loginTab").classList.toggle("active",mode==="login");
