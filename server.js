@@ -184,7 +184,7 @@ function matchmake(mode) {
       if (viewer.isBot) continue;
       const usedNames = new Set();
       const roster = batch.map((p, i) => {
-        let name = p.id === viewer.id ? "YOU" : (p.isBot ? p.name : "Player " + String(i + 1).padStart(2, "0"));
+        let name = p.id === viewer.id ? "YOU" : (p.name || (p.isBot ? p.name : "Player " + String(i + 1).padStart(2, "0")));
         if (usedNames.has(name)) name = "Player " + String(i + 1).padStart(2, "0");
         usedNames.add(name);
         return { name };
@@ -376,7 +376,11 @@ function closeRoom(r) {
 function message(p, m) {
   if (!m || typeof m !== "object") return;
   if (m.type === "join") {
-    if (!p.room) qadd(p, m.mode);
+    if (!p.room) {
+      const requestedName = String(m.name || "").trim().replace(/[^a-zA-Z0-9 _-]/g, "").slice(0, 16);
+      if (requestedName) p.name = requestedName;
+      qadd(p, m.mode);
+    }
     return;
   }
   const r = p.room && rooms.get(p.room);
@@ -467,7 +471,7 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocketServer({ server, maxPayload: 2048 });
 wss.on("connection", ws => {
-  const p = { id: randomId(), ws, room: null, strike: 0, isBot: false };
+  const p = { id: randomId(), ws, room: null, strike: 0, isBot: false, name: "Player" };
   send(p, "connected", { playerId: p.id, duelPlayers: 2, crowdPlayers: CROWD_SIZE });
   ws.on("message", raw => {
     try { message(p, JSON.parse(raw.toString())); }
