@@ -41,6 +41,71 @@ const QUIZ = [
   { q: "What is the fastest land animal?", a: ["Lion", "Cheetah", "Horse", "Leopard"], c: 1 }
 ];
 
+
+const QUESTION_GROUPS = ["students","families","small businesses","local communities","game developers","content creators","young people","city planners","sports teams","scientists","artists","teachers","travellers","remote workers","public libraries","neighbourhoods","new players","experienced gamers","future generations","community leaders","inventors","musicians","filmmakers","volunteers","team captains","public schools","universities","online communities","independent creators","urban residents","rural communities","environmental groups"];
+const QUESTION_ACTIVITIES = ["learn a new skill every year","spend more time outdoors","work on creative projects","take part in community events","try unfamiliar hobbies","collaborate across different teams","explore local history","practice problem-solving","share knowledge with beginners","take regular breaks from screens","support local projects","learn basic financial skills","participate in team sports","visit museums and galleries","use public transport more often","read for pleasure","build things with their hands","volunteer for local causes","study a second language","spend time in nature","make things instead of buying them","learn about science","try different kinds of music","plan activities together","teach others what they know"];
+const QUESTION_RESOURCES = ["public parks","creative spaces","community libraries","free learning resources","cycling paths","sports facilities","quiet study areas","local art events","reliable public transport","shared workspaces","science museums","accessible playgrounds","repair workshops","music programmes","technology clubs","community gardens","walking trails","youth centres","public sports courts","digital skills classes","local history projects","free cultural events","safe cycling routes","maker spaces","after-school clubs"];
+const QUESTION_VALUES = ["creativity","teamwork","curiosity","patience","independence","kindness","practical skills","honesty","reliability","adventure","community spirit","environmental care","open-mindedness","fairness","self-discipline","clear communication","problem-solving","learning","friendship","responsibility"];
+const QUESTION_GOALS = ["solve everyday problems","build stronger communities","learn difficult subjects","stay curious","make better decisions","share ideas","improve wellbeing","understand different viewpoints","create useful things","prepare for the future","work together","discover new interests","protect the environment","communicate clearly","make learning enjoyable"];
+const QUESTION_TOPICS = ["digital safety","personal finance","climate science","media literacy","teamwork","creative writing","first aid","basic coding","healthy cooking","local history","space exploration","critical thinking","communication","environmental science","entrepreneurship","design","music theory","geography","time management","problem-solving"];
+function makeDebateCandidate() {
+  const pick = list => list[randomInt(list.length)];
+  const templates = [
+    () => `Should ${pick(QUESTION_GROUPS)} have more opportunities to ${pick(QUESTION_ACTIVITIES)}?`,
+    () => `Would everyday life improve if people had more ${pick(QUESTION_RESOURCES)}?`,
+    () => `Should people prioritize ${pick(QUESTION_VALUES)} over ${pick(QUESTION_VALUES)}?`,
+    () => `Is ${pick(QUESTION_ACTIVITIES)} a good way to ${pick(QUESTION_GOALS)}?`,
+    () => `Should schools teach more about ${pick(QUESTION_TOPICS)}?`,
+    () => `Would communities benefit from investing more in ${pick(QUESTION_RESOURCES)}?`,
+    () => `Should everyone try to develop ${pick(QUESTION_VALUES)}?`
+  ];
+  return templates[randomInt(templates.length)]();
+}
+async function reserveUniqueQuestion(candidate, type) {
+  const key = candidate.q.toLocaleLowerCase().replace(/\\s+/g, " ").trim();
+  const result = await db.query(
+    "INSERT INTO used_questions(question_key,question_text,question_type) VALUES($1,$2,$3) ON CONFLICT(question_key) DO NOTHING RETURNING question_text",
+    [key, candidate.q, type]
+  );
+  return result.rowCount ? candidate : null;
+}
+async function nextUniqueDebateQuestion() {
+  for (let i = 0; i < 100; i++) {
+    const q = await reserveUniqueQuestion({ q: makeDebateCandidate() }, "debate");
+    if (q) return q.q;
+  }
+  throw new Error("The generated debate question pool needs more templates.");
+}
+function makeArithmeticQuiz() {
+  const a = randomInt(900000) + 10000;
+  const b = randomInt(900000) + 10000;
+  const subtract = randomInt(2) === 1;
+  const left = subtract ? Math.max(a,b) : a;
+  const right = subtract ? Math.min(a,b) : b;
+  const answer = subtract ? left - right : left + right;
+  const symbol = subtract ? "−" : "+";
+  const options = new Set([answer]);
+  while (options.size < 4) {
+    const offset = randomInt(200) + 1;
+    options.add(Math.max(0, answer + (randomInt(2) ? offset : -offset)));
+  }
+  const shuffled = [...options].sort(() => Math.random() - 0.5);
+  return { q: `What is ${left.toLocaleString("en-US")} ${symbol} ${right.toLocaleString("en-US")}?`, a: shuffled.map(n => n.toLocaleString("en-US")), c: shuffled.indexOf(answer) };
+}
+async function nextUniqueQuiz() {
+  for (let i = 0; i < QUIZ.length * 2; i++) {
+    const candidate = shufflePick(QUIZ);
+    const reserved = await reserveUniqueQuestion(candidate, "quiz");
+    if (reserved) return candidate;
+  }
+  for (let i = 0; i < 100; i++) {
+    const candidate = makeArithmeticQuiz();
+    const reserved = await reserveUniqueQuestion(candidate, "quiz");
+    if (reserved) return candidate;
+  }
+  throw new Error("Could not reserve a fresh quiz question.");
+}
+
 const BOT_NAMES = [
   "Mira", "Vex", "Orion", "Nova", "Pixel", "Rook", "Echo", "Blitz",
   "Sage", "Atlas", "Kairo", "Iris", "Zed", "Clover", "Nyx", "Juno",
@@ -65,6 +130,7 @@ async function initDatabase() {
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`);
   await db.query("CREATE INDEX IF NOT EXISTS account_sessions_expiry_idx ON account_sessions(expires_at)");
+  await db.query(`CREATE TABLE IF NOT EXISTS used_questions (question_key TEXT PRIMARY KEY, question_text TEXT NOT NULL, question_type TEXT NOT NULL, used_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
   dbReady = true;
 }
 function tokenHash(token) { return crypto.createHash("sha256").update(token).digest("hex"); }
@@ -297,13 +363,16 @@ function matchmake(mode) {
   }
 }
 
-function startVote(r) {
+async function startVote(r) {
   if (!rooms.has(r.id)) return;
   clearTimeout(r.timer);
-  r.phase = "vote";
+  r.phase = "loading-question";
   r.round += 1;
   r.votes.clear();
-  r.question = shufflePick(QUESTIONS);
+  try { r.question = await nextUniqueDebateQuestion(); }
+  catch (error) { console.error("Question generation error:", error.message); r.question = shufflePick(QUESTIONS); }
+  if (!rooms.has(r.id) || r.phase !== "loading-question") return;
+  r.phase = "vote";
   cast(r, "round", {
     round: r.round,
     alive: r.alive.size,
@@ -366,14 +435,13 @@ function resolveVote(r) {
   }
 }
 
-function createFinalQuestions(r) {
+async function createFinalQuestions(r) {
   const ids = [...r.alive].slice(0, 2);
-  const qa = shufflePick(QUIZ);
-  let qb = shufflePick(QUIZ);
-  while (qb.q === qa.q) qb = shufflePick(QUIZ);
+  const qa = await nextUniqueQuiz();
+  const qb = await nextUniqueQuiz();
   r.final = { ids, qs: new Map([[ids[0], qa], [ids[1], qb]]), answers: new Map(), choices: new Map() };
 }
-function startFinal(r) {
+async function startFinal(r) {
   if (!rooms.has(r.id)) return;
   clearTimeout(r.timer);
   const ids = [...r.alive];
@@ -382,8 +450,11 @@ function startFinal(r) {
     else closeRoom(r);
     return;
   }
+  r.phase = "loading-final";
+  try { await createFinalQuestions(r); }
+  catch (error) { console.error("Final question error:", error.message); closeRoom(r); return; }
+  if (!rooms.has(r.id) || r.phase !== "loading-final") return;
   r.phase = "final";
-  createFinalQuestions(r);
   for (const id of r.final.ids) {
     const quiz = r.final.qs.get(id);
     send(r.players.get(id), "final-question", { question: quiz.q, options: quiz.a });
@@ -401,11 +472,13 @@ function resolveFinal(r) {
   cast(r, "final-choice", { message: "Same result! Choose REPEAT or RANDOM." });
   r.timer = setTimeout(() => startQuick(r), 15000);
 }
-function repeatFinal(r) {
+async function repeatFinal(r) {
   const [a, b] = r.final.ids;
-  const qa = shufflePick(QUIZ);
-  let qb = shufflePick(QUIZ);
-  while (qb.q === qa.q) qb = shufflePick(QUIZ);
+  r.phase = "loading-final";
+  let qa, qb;
+  try { qa = await nextUniqueQuiz(); qb = await nextUniqueQuiz(); }
+  catch (error) { console.error("Repeat final question error:", error.message); closeRoom(r); return; }
+  if (!rooms.has(r.id) || r.phase !== "loading-final") return;
   r.phase = "final";
   r.final.qs = new Map([[a, qa], [b, qb]]);
   r.final.answers.clear();
@@ -428,9 +501,13 @@ function startQuick(r) {
   };
   nextQuick(r);
 }
-function nextQuick(r) {
+async function nextQuick(r) {
   if (r.phase !== "quick") return;
-  r.quick.q = shufflePick(QUIZ);
+  let freshQuestion;
+  try { freshQuestion = await nextUniqueQuiz(); }
+  catch (error) { console.error("Sudden-death question error:", error.message); closeRoom(r); return; }
+  if (!rooms.has(r.id) || r.phase !== "quick") return;
+  r.quick.q = freshQuestion;
   r.quick.answers.clear();
   r.quick.first = null;
   cast(r, "quick-question", {
@@ -456,6 +533,7 @@ function finish(r, winner, reason) {
   clearTimeout(r.timer);
   r.phase = "finished";
   for (const [id, p] of r.players) {
+    p.room = null;
     if (id === winner) {
       p.strike = (p.strike || 0) + 1;
       send(p, "match-result", { winner: true, strike: p.strike, reason });
@@ -523,7 +601,7 @@ async function message(p, m) {
       const ca = r.final.choices.get(a), cb = r.final.choices.get(b);
       if (ca !== cb) startQuick(r);
       else if (ca === "RANDOM") finish(r, randomInt(2) ? a : b, "random");
-      else repeatFinal(r);
+      else repeatFinal(r).catch(error => console.error("Final rematch question error:", error));
     }
     return;
   }
@@ -557,7 +635,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
     return res.end(JSON.stringify({
       ok: true, service: "the-majority", rooms: rooms.size,
-      queued: queues.duel.length + queues.crowd.length
+      queued: queues.duel.length + queues.crowd.length, accountsReady: dbReady
     }));
   }
   if (path === "/" || path === "/online.html") {
