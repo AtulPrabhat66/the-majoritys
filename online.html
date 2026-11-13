@@ -305,7 +305,7 @@ $("yesBtn").onclick=()=>send("vote",{vote:"YES"});
 $("noBtn").onclick=()=>send("vote",{vote:"NO"});
 $("repeatBtn").onclick=()=>{send("final-choice",{choice:"REPEAT"});$("repeatBtn").disabled=true;$("randomBtn").disabled=true;};
 $("randomBtn").onclick=()=>{send("final-choice",{choice:"RANDOM"});$("repeatBtn").disabled=true;$("randomBtn").disabled=true;};
-$("cancelQueue").onclick=()=>{desiredJoin=false;manuallyCancelled=true;if(socket)socket.close();clearInterval(timerInterval);show("home");status("offline","DISCONNECTED");connectSocket();};
+$("cancelQueue").onclick=()=>{desiredJoin=false;manuallyCancelled=true;clearInterval(timerInterval);const oldSocket=socket;socket=null;if(oldSocket&&oldSocket.readyState<2)oldSocket.close();show("home");status("offline","RECONNECTING");setTimeout(()=>{manuallyCancelled=false;connectSocket();},350);};
 $("playAgainBtn").onclick=()=>{show("home");desiredJoin=false;connectSocket();};
 $("outAgainBtn").onclick=()=>{show("home");desiredJoin=false;connectSocket();};
 connectSocket();
