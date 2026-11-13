@@ -252,7 +252,7 @@ async function authApi(req, res, path) {
       return jsonReply(res,200,{token,account});
     }
     if (path === "/api/profile" && req.method === "GET") {
-      const account = await accountForToken(String(req.headers.authorization || "").replace(/^Bearer\\s+/i,""));
+      const account = await accountForToken(String(req.headers.authorization || "").replace(/^Bearer\s+/i,""));
       if (!account) return jsonReply(res,401,{error:"Please log in again."});
       const [stats, history] = await Promise.all([
         db.query(`SELECT COUNT(*)::int AS matches,
