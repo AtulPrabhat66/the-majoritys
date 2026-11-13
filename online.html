@@ -331,9 +331,10 @@ function connectSocket(){
 function scheduleReconnect(){clearTimeout(retryTimer);retryTimer=setTimeout(()=>{retryDelay=Math.min(retryDelay*1.7,15000);connectSocket();},retryDelay);}
 function send(type,data={}){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type,...data}));}
 function joinMatch(){
+ if(!authToken){toast("Please sign up or log in first.");return;}
  if(!socket||socket.readyState!==WebSocket.OPEN){connectSocket();return;}
- playerName=($("playerName").value.trim()||"Player").replace(/[^a-zA-Z0-9 _-]/g,"").slice(0,16)||"Player";
- desiredJoin=true;manuallyCancelled=false;send("join",{mode:selectedMode,name:playerName});matchMode=selectedMode;
+ playerName=$("accountUsername").textContent||"Player";
+ desiredJoin=true;manuallyCancelled=false;send("join",{mode:selectedMode,name:playerName,token:authToken});matchMode=selectedMode;
  $("queueTitle").textContent=selectedMode==="duel"?"FINDING YOUR DUEL":"FINDING THE CROWD";
  $("queueText").textContent="Locating opponents. Your arena is being prepared.";
  $("queueCount").textContent="MATCHMAKING IN PROGRESS";show("queueScreen");
@@ -364,7 +365,7 @@ function handle(m){
 $("modeDuel").onclick=()=>{selectedMode="duel";$("modeDuel").classList.add("active");$("modeCrowd").classList.remove("active");};
 $("modeCrowd").onclick=()=>{selectedMode="crowd";$("modeCrowd").classList.add("active");$("modeDuel").classList.remove("active");};
 $("playBtn").onclick=()=>{desiredJoin=true;joinMatch();};
-$("playerName").addEventListener("keydown",e=>{if(e.key==="Enter"&&!$("playBtn").disabled)joinMatch();});
+
 $("yesBtn").onclick=()=>send("vote",{vote:"YES"});
 $("noBtn").onclick=()=>send("vote",{vote:"NO"});
 $("repeatBtn").onclick=()=>{send("final-choice",{choice:"REPEAT"});$("repeatBtn").disabled=true;$("randomBtn").disabled=true;};
@@ -376,6 +377,47 @@ $("outAgainBtn").onclick=()=>{show("home");desiredJoin=false;connectSocket();};
 const podGrid=$("podGrid");
 if(podGrid){for(let i=0;i<50;i++){const pod=document.createElement("i");pod.className="pod";pod.style.setProperty("--delay",(Math.random()*3.5).toFixed(2)+"s");podGrid.appendChild(pod);}}
 connectSocket();
+
+function setAuthMode(mode){
+ authMode=mode;$("signupTab").classList.toggle("active",mode==="signup");$("loginTab").classList.toggle("active",mode==="login");
+ $("authUsername").classList.toggle("hidden",mode==="login");$("authConfirm").classList.toggle("hidden",mode==="login");
+ $("authHeading").textContent=mode==="signup"?"CREATE YOUR ACCOUNT":"WELCOME BACK";
+ $("authDescription").textContent=mode==="signup"?"Sign up once. Your player identity will be saved across sessions.":"Log in to continue with your saved player account.";
+ $("authSubmit").textContent=mode==="signup"?"CREATE ACCOUNT":"LOG IN";
+}
+async function submitAuth(){
+ const b=$("authSubmit");b.disabled=true;b.textContent="PLEASE WAIT…";
+ try{
+  const payload={email:$("authEmail").value.trim(),password:$("authPassword").value};
+  if(authMode==="signup"){payload.username=$("authUsername").value.trim();if(payload.password!==$("authConfirm").value)throw new Error("Passwords do not match.");}
+  const res=await fetch("/api/"+authMode,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
+  const data=await res.json();if(!res.ok)throw new Error(data.error||"Account request failed.");
+  authToken=data.token;localStorage.setItem("majority_session",authToken);
+  $("accountUsername").textContent=data.account.username;$("authFields").classList.add("hidden");$("accountReady").classList.remove("hidden");
+  $("authHeading").textContent="ACCOUNT READY";$("authDescription").textContent="Your player identity is saved. Choose a mode and press PLAY.";
+  $("authNote").textContent="Keep your login details private.";
+  status(socket&&socket.readyState===WebSocket.OPEN?"online":"offline",socket&&socket.readyState===WebSocket.OPEN?"ARENA ONLINE":"CONNECTING TO ARENA");
+  toast(authMode==="signup"?"Account created. Welcome to the arena.":"You are logged in.");
+ }catch(e){$("authNote").textContent=e.message;}
+ finally{b.disabled=false;b.textContent=authMode==="signup"?"CREATE ACCOUNT":"LOG IN";}
+}
+async function restoreAccount(){
+ if(authToken){try{
+  const res=await fetch("/api/me",{headers:{authorization:"Bearer "+authToken}});const data=await res.json();if(!res.ok)throw new Error();
+  $("accountUsername").textContent=data.account.username;$("authFields").classList.add("hidden");$("accountReady").classList.remove("hidden");
+  $("authHeading").textContent="ACCOUNT READY";$("authDescription").textContent="Welcome back. Your player identity is ready.";$("authNote").textContent="You are signed in.";
+ }catch{authToken="";localStorage.removeItem("majority_session");}}
+ status(socket&&socket.readyState===WebSocket.OPEN?"online":"offline",socket&&socket.readyState===WebSocket.OPEN?"ARENA ONLINE":"CONNECTING TO ARENA");
+}
+$("signupTab").onclick=()=>setAuthMode("signup");$("loginTab").onclick=()=>setAuthMode("login");$("authSubmit").onclick=submitAuth;
+$("authConfirm").addEventListener("keydown",e=>{if(e.key==="Enter")submitAuth();});
+$("authPassword").addEventListener("keydown",e=>{if(e.key==="Enter")submitAuth();});
+$("logoutBtn").onclick=async()=>{try{await fetch("/api/logout",{method:"POST",headers:{authorization:"Bearer "+authToken}});}catch{}
+ authToken="";localStorage.removeItem("majority_session");$("accountReady").classList.add("hidden");$("authFields").classList.remove("hidden");
+ $("authPassword").value="";$("authConfirm").value="";setAuthMode("signup");$("authHeading").textContent="CREATE YOUR ACCOUNT";$("authDescription").textContent="Sign up once. Your player identity will be saved across sessions.";
+ status(socket&&socket.readyState===WebSocket.OPEN?"online":"offline","ARENA ONLINE");};
+
+restoreAccount();
 </script>
 </body>
 </html>
