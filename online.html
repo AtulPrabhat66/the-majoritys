@@ -225,6 +225,7 @@ body:before{opacity:.08;background-size:46px 46px}
 @keyframes defeatDrop{0%{opacity:0;transform:translateY(-12px) scale(1.02);filter:grayscale(.7)}65%{transform:translateY(3px)}100%{opacity:1;transform:none;filter:none}}
 @keyframes lossPulse{from{text-shadow:0 0 8px #ff2a5f22}to{text-shadow:0 0 28px #ff2a5f99}}
 @media(max-width:680px){.profile-stats{grid-template-columns:repeat(2,1fr)}.history-item{grid-template-columns:62px 1fr}.history-streak{grid-column:2}.top-actions{gap:5px!important}.top-actions .sound-toggle{padding:7px 8px;font-size:8px}}
+.question-settings{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:15px;padding:16px;background:#0d1520;border:1px solid #344154}.setting-block label{display:block;color:#00F0FF;font-size:9px;font-weight:900;letter-spacing:.18em;margin-bottom:8px}.question-select{width:100%;height:44px;padding:0 12px;background:#111d29;border:1px solid #46566c;color:#f5f7fb;font:800 12px 'DM Sans';letter-spacing:.06em;outline:none}.question-select:focus{border-color:#00F0FF}.settings-note{grid-column:1/-1;color:#8192a3;font-size:9px;margin:0}@media(max-width:520px){.question-settings{grid-template-columns:1fr}.settings-note{grid-column:1}}
 </style>
 </head>
 <body>
@@ -259,6 +260,11 @@ body:before{opacity:.08;background-size:46px 46px}
 <div class="mode-grid">
 <button class="mode active" id="modeDuel" type="button"><span class="mode-number">MODE 01</span><span class="mode-icon">Ⅱ</span><h3>DUEL</h3><p>One opponent. One mind game. A direct battle to the finish.</p></button>
 <button class="mode" id="modeCrowd" type="button"><span class="mode-number">MODE 02</span><span class="mode-icon">◈</span><h3>THE CROWD</h3><p>Up to 50 contenders. Survive the majority and outlast them all.</p></button>
+</div>
+<div class="question-settings">
+  <div class="setting-block"><label for="difficultySelect">QUESTION DIFFICULTY</label><select id="difficultySelect" class="question-select"><option value="easy">EASY</option><option value="mid" selected>MID</option><option value="hard">HARD</option><option value="genius">GENIUS</option></select></div>
+  <div class="setting-block"><label for="categorySelect">QUESTION CATEGORY</label><select id="categorySelect" class="question-select"><option value="all">ALL TOPICS · MIXED</option><option value="science">SCIENCE</option><option value="math">MATHEMATICS</option><option value="history">HISTORY</option><option value="geography">GEOGRAPHY</option><option value="technology">TECHNOLOGY</option><option value="gaming">GAMING</option><option value="sports">SPORTS</option><option value="movies">MOVIES & TV</option><option value="anime">ANIME</option><option value="music">MUSIC</option><option value="literature">LITERATURE</option><option value="mythology">MYTHOLOGY</option><option value="nature">NATURE & ANIMALS</option><option value="food">FOOD</option><option value="art">ART & CULTURE</option><option value="logic">LOGIC & RIDDLES</option><option value="general">GENERAL KNOWLEDGE</option><option value="debate">OPINION & WHAT-IF</option></select></div>
+  <p class="settings-note">Difficulty and topic apply to the whole match, including the final rounds.</p>
 </div>
 </div>
 <div class="card profile-card">
@@ -376,7 +382,7 @@ body:before{opacity:.08;background-size:46px 46px}
 <script>
 const $=id=>document.getElementById(id);
 const screens=["home","profileScreen","queueScreen","gameScreen","resultScreen","choiceScreen","resultEndScreen","outScreen"];
-let authToken=localStorage.getItem("majority_session")||"",authMode="signup",socket=null,selectedMode="duel",playerId=null,playerName="",matchMode="duel",timerInterval=null,secondsLeft=10,desiredJoin=false,manuallyCancelled=false,retryDelay=1200,retryTimer=null,lastRoster=[];
+let authToken=localStorage.getItem("majority_session")||"",authMode="signup",socket=null,selectedMode="duel",playerId=null,playerName="",matchMode="duel",timerInterval=null,secondsLeft=10,desiredJoin=false,manuallyCancelled=false,retryDelay=1200,retryTimer=null,lastRoster=[],selectedDifficulty="mid",selectedCategory="all";
 function show(id){screens.forEach(s=>$(s).classList.toggle("active",s===id));window.scrollTo({top:0,behavior:"smooth"});}
 let soundEnabled=true,musicEnabled=true,audioUnlocked=false,audioCtx=null,musicTimer=null,musicStep=0,musicNodes=[];function playTone(freq,duration,type,gain){if(!soundEnabled)return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type||"sine";o.frequency.value=freq;g.gain.setValueAtTime(gain||.025,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+duration);}catch{}}function soundEvent(k){if(k==="lock"){playTone(660,.08,"square");setTimeout(()=>playTone(880,.1,"sine"),75);}if(k==="reveal"){playTone(220,.2,"sawtooth");setTimeout(()=>playTone(330,.16,"triangle"),100);}if(k==="win"){[523,659,784].forEach((f,i)=>setTimeout(()=>playTone(f,.2,"triangle"),i*100));}if(k==="eliminate"){playTone(145,.28,"sawtooth");setTimeout(()=>playTone(90,.2,"sawtooth"),120);}}function musicNote(freq,duration,volume,wave="sine"){if(!audioCtx||!musicEnabled)return;const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=wave;o.frequency.value=freq;g.gain.setValueAtTime(.0001,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(volume,audioCtx.currentTime+.12);g.gain.setTargetAtTime(.0001,audioCtx.currentTime+duration*.72,.18);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+duration);musicNodes.push(o);if(musicNodes.length>36)musicNodes=musicNodes.slice(-24);}function musicBar(){if(!musicEnabled||!audioCtx)return;const chords=[[146.83,174.61,220],[116.54,146.83,174.61],[87.31,110,130.81],[130.81,164.81,196]];const chord=chords[Math.floor(musicStep/4)%chords.length],root=chord[0];musicNote(root/2,3.4,.025,"triangle");musicNote(chord[0],2.8,.012,"sine");musicNote(chord[1],2.8,.009,"sine");musicNote(chord[2],2.8,.008,"sine");const melody=[chord[2]*2,chord[1]*2,chord[0]*2,chord[1]*2];musicNote(melody[musicStep%4],.75,.012,"triangle");if(musicStep%2===0)musicNote(root*2,.18,.008,"sine");musicStep++;}function startMusic(){try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();musicEnabled=true;musicStep=0;if(musicTimer)clearInterval(musicTimer);musicBar();musicTimer=setInterval(musicBar,850);}catch{musicEnabled=false;toast("Music is not available in this browser.");}}
 function unlockAudio(){if(audioUnlocked)return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();audioUnlocked=true;if(musicEnabled)startMusic();}catch{}}
@@ -403,7 +409,8 @@ let queueStartedAt=0,queueClock=null;function updateQueueClock(){if(!queueStarte
  $("queueTitle").textContent=selectedMode==="duel"?"FINDING YOUR DUEL":"FINDING THE CROWD";
  $("queueText").textContent=selectedMode==="duel"?"Finding an opponent. Most duel queues should start in a few seconds.":"Filling the crowd. This mode can take a little longer.";
  $("queueCount").textContent="SEARCHING · 00:00";renderQueueWarmup(null);$("queueQuestion").textContent="Your warm-up question is loading…";$("queueOptions").innerHTML="";show("queueScreen");
- send("join",{mode:selectedMode,name:playerName,token:authToken});
+ selectedDifficulty=$("difficultySelect").value;selectedCategory=$("categorySelect").value;
+ send("join",{mode:selectedMode,name:playerName,token:authToken,difficulty:selectedDifficulty,category:selectedCategory});
 }
 function renderRoster(list){lastRoster=list||[];$("roster").innerHTML="";lastRoster.forEach((p,i)=>{const el=document.createElement("span"),streak=Number(p.streak)||0;el.className="player-chip"+(String(p.name).toUpperCase()==="YOU"?" you":"");if(streak>=10)el.classList.add("streak-10");else if(streak>=5)el.classList.add("streak-5");else if(streak>=3)el.classList.add("streak-3");else if(streak>0)el.classList.add("streak-1");el.textContent=(String(p.name).toUpperCase()==="YOU"?"◆ ":"")+p.name;if(streak>0){const mark=document.createElement("span");mark.className="streak-mark";mark.textContent="🔥"+streak;el.appendChild(mark);} $("roster").appendChild(el);});}
 function startTimer(n){clearInterval(timerInterval);secondsLeft=n;$("timer").textContent=secondsLeft;$("timerBar").style.width="100%";timerInterval=setInterval(()=>{secondsLeft=Math.max(0,secondsLeft-1);$("timer").textContent=secondsLeft;$("timerBar").style.width=(secondsLeft/n*100)+"%";if(secondsLeft===0)clearInterval(timerInterval);},1000);}
@@ -431,6 +438,8 @@ function handle(m){
 }
 $("modeDuel").onclick=()=>{selectedMode="duel";$("modeDuel").classList.add("active");$("modeCrowd").classList.remove("active");};
 $("modeCrowd").onclick=()=>{selectedMode="crowd";$("modeCrowd").classList.add("active");$("modeDuel").classList.remove("active");};
+$("difficultySelect").onchange=()=>{selectedDifficulty=$("difficultySelect").value;};
+$("categorySelect").onchange=()=>{selectedCategory=$("categorySelect").value;};
 $("playBtn").onclick=()=>{desiredJoin=true;joinMatch();};
 
 $("yesBtn").onclick=()=>{soundEvent("lock");send("vote",{vote:"YES"});};
