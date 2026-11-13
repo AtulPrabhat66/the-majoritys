@@ -786,12 +786,21 @@ async function message(p, m) {
   if (!m || typeof m !== "object") return;
   if (m.type === "join") {
     if (!p.room) {
-      const account = await accountForToken(m.token);
-      if (!account) return send(p, "error", { message: "Please sign up or log in before playing." });
-      p.account = account;
-      p.name = account.username;
-      const prior = await db.query("SELECT streak_after FROM match_history WHERE account_id=$1 ORDER BY id DESC LIMIT 1",[account.id]);
-      p.strike = Number(prior.rows[0]?.streak_after || 0);
+      if (m.tester === true) {
+        // Tester sessions are anonymous and deliberately have no account/progress record.
+        p.account = null;
+        p.isTester = true;
+        p.name = "TESTER";
+        p.strike = 0;
+      } else {
+        const account = await accountForToken(m.token);
+        if (!account) return send(p, "error", { message: "Please sign up or log in, or choose TESTER to play without saving progress." });
+        p.account = account;
+        p.isTester = false;
+        p.name = account.username;
+        const prior = await db.query("SELECT streak_after FROM match_history WHERE account_id=$1 ORDER BY id DESC LIMIT 1",[account.id]);
+        p.strike = Number(prior.rows[0]?.streak_after || 0);
+      }
       await qadd(p, m.mode, {difficulty:m.difficulty,category:m.category});
     }
     return;
