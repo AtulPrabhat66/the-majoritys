@@ -183,6 +183,8 @@ body:before{opacity:.08;background-size:46px 46px}
 
 /* Hide player identities during active matches */
 #roster,.player-row{display:none!important}
+
+.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.auth-tab{height:38px;border:1px solid #354654;background:#0c1420;color:#91a0af;font:800 10px 'Barlow Condensed';letter-spacing:.18em}.auth-tab.active{border-color:#00F0FF;color:#00F0FF;background:#12303a}.auth-input{display:block;margin:9px 0}.account-welcome{padding:13px;background:#0c1c25;border:1px solid #00F0FF55;color:#a9c9cf;font-size:11px}.account-welcome strong{color:#00F0FF}.profile-card .secondary-btn{width:100%;margin:0 0 8px}.profile-card .play-btn{margin-top:10px}
 </style>
 </head>
 <body>
@@ -220,12 +222,24 @@ body:before{opacity:.08;background-size:46px 46px}
 </div>
 </div>
 <div class="card profile-card">
-<div class="card-label">02 / YOUR IDENTITY</div>
-<h3>ENTER YOUR NAME</h3>
-<p>This is how other players will see you in the arena.</p>
-<input class="name-input" id="playerName" maxlength="16" autocomplete="nickname" placeholder="Your player name">
+<div class="card-label">02 / PLAYER ACCOUNT</div>
+<h3 id="authHeading">CREATE YOUR ACCOUNT</h3>
+<p id="authDescription">Sign up once. Your player identity will be saved across sessions.</p>
+<div class="auth-tabs"><button type="button" id="signupTab" class="auth-tab active">SIGN UP</button><button type="button" id="loginTab" class="auth-tab">LOG IN</button></div>
+<div id="authFields">
+<input class="name-input auth-input" id="authUsername" maxlength="16" autocomplete="username" placeholder="Username (3–16 characters)">
+<input class="name-input auth-input" id="authEmail" maxlength="254" type="email" autocomplete="email" placeholder="Email address">
+<input class="name-input auth-input" id="authPassword" type="password" autocomplete="new-password" placeholder="Password (at least 10 characters)">
+<input class="name-input auth-input" id="authConfirm" type="password" autocomplete="new-password" placeholder="Confirm password">
+<button class="play-btn" id="authSubmit" type="button">CREATE ACCOUNT</button>
+</div>
+<div id="accountReady" class="hidden">
+<p class="account-welcome">SIGNED IN AS <strong id="accountUsername"></strong></p>
+<button class="secondary-btn" id="logoutBtn" type="button">LOG OUT</button>
+</div>
 <button class="play-btn" id="playBtn" type="button" disabled>PLAY <span aria-hidden="true">↗</span></button>
-<p class="small-note" id="connectionNote">Getting the arena ready… PLAY will unlock when the server is available.</p>
+<p class="small-note" id="authNote">Use an email you can access and keep your password private.</p>
+<p class="small-note" id="connectionNote">Connecting to the arena…</p>
 </div>
 </div>
 <div class="bottom-strip">
@@ -299,10 +313,10 @@ body:before{opacity:.08;background-size:46px 46px}
 <script>
 const $=id=>document.getElementById(id);
 const screens=["home","queueScreen","gameScreen","resultScreen","choiceScreen","resultEndScreen","outScreen"];
-let socket=null,selectedMode="duel",playerId=null,playerName="",matchMode="duel",timerInterval=null,secondsLeft=10,desiredJoin=false,manuallyCancelled=false,retryDelay=1200,retryTimer=null,lastRoster=[];
+let authToken=localStorage.getItem("majority_session")||"",authMode="signup",socket=null,selectedMode="duel",playerId=null,playerName="",matchMode="duel",timerInterval=null,secondsLeft=10,desiredJoin=false,manuallyCancelled=false,retryDelay=1200,retryTimer=null,lastRoster=[];
 function show(id){screens.forEach(s=>$(s).classList.toggle("active",s===id));window.scrollTo({top:0,behavior:"smooth"});}
 function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2300);}
-function status(kind,msg){$("statusDot").className="status-dot "+kind;$("statusText").textContent=msg;$("playBtn").disabled=kind!=="online";$("connectionNote").textContent=kind==="online"?"Arena ready. Choose your mode and press PLAY.":kind==="offline"?"Connection lost. Reconnecting to the arena…":"Getting the arena ready… PLAY will unlock when the server is available.";}
+function status(kind,msg){$("statusDot").className="status-dot "+kind;$("statusText").textContent=msg;$("playBtn").disabled=kind!=="online"||!authToken;$("connectionNote").textContent=kind==="online"?"Arena ready. Choose your mode and press PLAY.":kind==="offline"?"Connection lost. Reconnecting to the arena…":"Getting the arena ready… PLAY will unlock when the server is available.";}
 function wsAddress(){return (location.protocol==="https:"?"wss://":"ws://")+location.host;}
 function connectSocket(){
  if(!location.host){status("offline","OPEN THE GAME LINK");$("connectionNote").textContent="Open the hosted game link to connect to the arena.";return;}
