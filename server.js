@@ -48,6 +48,10 @@ const QUESTION_RESOURCES = ["public parks","creative spaces","community librarie
 const QUESTION_VALUES = ["creativity","teamwork","curiosity","patience","independence","kindness","practical skills","honesty","reliability","adventure","community spirit","environmental care","open-mindedness","fairness","self-discipline","clear communication","problem-solving","learning","friendship","responsibility"];
 const QUESTION_GOALS = ["solve everyday problems","build stronger communities","learn difficult subjects","stay curious","make better decisions","share ideas","improve wellbeing","understand different viewpoints","create useful things","prepare for the future","work together","discover new interests","protect the environment","communicate clearly","make learning enjoyable"];
 const QUESTION_TOPICS = ["digital safety","personal finance","climate science","media literacy","teamwork","creative writing","first aid","basic coding","healthy cooking","local history","space exploration","critical thinking","communication","environmental science","entrepreneurship","design","music theory","geography","time management","problem-solving"];
+const QUESTION_CONTEXTS = ["during the school year","in local communities","at work","on weekends","while learning new skills","when planning for the future","in public spaces","during team projects","when making big decisions","as part of everyday life","in growing cities","when using technology","during free time","in community programmes","when solving problems"];
+const QUESTION_TIMES = ["at school","after work","on weekends","during holidays","in the evening","throughout the year","in their free time","during group projects","before making decisions","while travelling"];
+const QUESTION_VERBS = ["using","learning","visiting","building","sharing","organizing","supporting","creating","studying","practising","exploring","improving"];
+const QUESTION_ALTERNATIVES = ["watching tutorials","reading instructions","learning from experience","working alone","asking an expert","joining a group","trying a new approach","using a digital tool","practising regularly","learning by teaching others"];
 function makeDebateCandidate() {
   const pick = list => list[randomInt(list.length)];
   const templates = [
@@ -57,7 +61,15 @@ function makeDebateCandidate() {
     () => `Is ${pick(QUESTION_ACTIVITIES)} a good way to ${pick(QUESTION_GOALS)}?`,
     () => `Should schools teach more about ${pick(QUESTION_TOPICS)}?`,
     () => `Would communities benefit from investing more in ${pick(QUESTION_RESOURCES)}?`,
-    () => `Should everyone try to develop ${pick(QUESTION_VALUES)}?`
+    () => `Should everyone try to develop ${pick(QUESTION_VALUES)}?`,
+    () => `Should ${pick(QUESTION_GROUPS)} have more opportunities to ${pick(QUESTION_VERBS)} ${pick(QUESTION_RESOURCES)} ${pick(QUESTION_CONTEXTS)}?`,
+    () => `Would ${pick(QUESTION_GROUPS)} benefit from ${pick(QUESTION_VERBS)} ${pick(QUESTION_RESOURCES)} ${pick(QUESTION_TIMES)}?`,
+    () => `Should ${pick(QUESTION_GROUPS)} be encouraged to ${pick(QUESTION_ACTIVITIES)} ${pick(QUESTION_CONTEXTS)}?`,
+    () => `Would ${pick(QUESTION_RESOURCES)} make it easier for ${pick(QUESTION_GROUPS)} to ${pick(QUESTION_GOALS)}?`,
+    () => `Is ${pick(QUESTION_ACTIVITIES)} a better way to ${pick(QUESTION_GOALS)} than ${pick(QUESTION_ALTERNATIVES)}?`,
+    () => `Should ${pick(QUESTION_GROUPS)} prioritize ${pick(QUESTION_VALUES)} ${pick(QUESTION_CONTEXTS)}?`,
+    () => `Should ${pick(QUESTION_GROUPS)} have the option to ${pick(QUESTION_ACTIVITIES)} ${pick(QUESTION_TIMES)}?`,
+    () => `Would people learn more about ${pick(QUESTION_TOPICS)} by ${pick(QUESTION_VERBS)} ${pick(QUESTION_RESOURCES)}?`
   ];
   return templates[randomInt(templates.length)]();
 }
@@ -70,11 +82,11 @@ async function reserveUniqueQuestion(candidate, type) {
   return result.rowCount ? candidate : null;
 }
 async function nextUniqueDebateQuestion() {
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 1000; i++) {
     const q = await reserveUniqueQuestion({ q: makeDebateCandidate() }, "debate");
     if (q) return q.q;
   }
-  throw new Error("The generated debate question pool needs more templates.");
+  throw new Error("Fresh debate questions temporarily unavailable; refusing to repeat a question.");
 }
 function makeArithmeticQuiz() {
   const a = randomInt(900000) + 10000;
@@ -266,7 +278,9 @@ function botVote(p, r) {
   if (p.style === "instinct" && Math.random() < 0.5) return crowd || preference;
   return preference;
 }
-function botQuizAnswer(p, question) {
+function botQuizAnswer(p, quiz) {
+  const question = typeof quiz === "string" ? quiz : quiz.q;
+  if (quiz && typeof quiz === "object" && Number.isInteger(quiz.c) && Math.random() < p.skill) return quiz.c;
   const known = {
     "Which planet is known as the Red Planet?": 1,
     "How many sides does a hexagon have?": 1,
@@ -289,12 +303,12 @@ function botAct(p, type) {
       message(p, { type: "vote", vote: botVote(p, r) });
     } else if (type === "final-question" && r.phase === "final" && r.final && r.final.ids.includes(p.id)) {
       const quiz = r.final.qs.get(p.id);
-      if (quiz && !r.final.answers.has(p.id)) message(p, { type: "final-answer", answer: botQuizAnswer(p, quiz.q) });
+      if (quiz && !r.final.answers.has(p.id)) message(p, { type: "final-answer", answer: botQuizAnswer(p, quiz) });
     } else if (type === "final-choice" && r.phase === "final-choice" && r.final && !r.final.choices.has(p.id)) {
       const choice = p.style === "risk-taker" ? "RANDOM" : p.style === "analyst" ? "REPEAT" : (Math.random() < p.skill ? "REPEAT" : "RANDOM");
       message(p, { type: "final-choice", choice });
     } else if (type === "quick-question" && r.phase === "quick" && r.quick && r.final.ids.includes(p.id) && !r.quick.answers.has(p.id)) {
-      message(p, { type: "quick-answer", answer: botQuizAnswer(p, r.quick.q.q) });
+      message(p, { type: "quick-answer", answer: botQuizAnswer(p, r.quick.q) });
     }
   }, delay);
 }
@@ -370,7 +384,7 @@ async function startVote(r) {
   r.round += 1;
   r.votes.clear();
   try { r.question = await nextUniqueDebateQuestion(); }
-  catch (error) { console.error("Question generation error:", error.message); r.question = shufflePick(QUESTIONS); }
+  catch (error) { console.error("Question generation error:", error.message); closeRoom(r); return; }
   if (!rooms.has(r.id) || r.phase !== "loading-question") return;
   r.phase = "vote";
   cast(r, "round", {
