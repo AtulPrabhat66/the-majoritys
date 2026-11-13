@@ -1,6 +1,11 @@
 const http = require("http");
 const fs = require("fs");
 const crypto = require("crypto");
+const { promisify } = require("util");
+const { Pool } = require("pg");
+const scrypt = promisify(crypto.scrypt);
+const db = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : undefined, max: 5 });
+let dbReady = false;
 const { WebSocketServer, WebSocket } = require("ws");
 
 const PORT = Number(process.env.PORT || 3000);
@@ -42,6 +47,103 @@ const BOT_NAMES = [
   "Axel", "Quinn", "Rune", "Skye", "Arlo", "Tess", "Onyx", "Sol"
 ];
 const BOT_STYLES = ["analyst", "contrarian", "social", "risk-taker", "balanced", "instinct"];
+
+
+async function initDatabase() {
+  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not configured");
+  await db.query(`CREATE TABLE IF NOT EXISTS accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(16) NOT NULL UNIQUE,
+    email VARCHAR(254) NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`);
+  await db.query(`CREATE TABLE IF NOT EXISTS account_sessions (
+    token_hash CHAR(64) PRIMARY KEY,
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`);
+  await db.query("CREATE INDEX IF NOT EXISTS account_sessions_expiry_idx ON account_sessions(expires_at)");
+  dbReady = true;
+}
+function tokenHash(token) { return crypto.createHash("sha256").update(token).digest("hex"); }
+async function issueSession(accountId) {
+  const token = crypto.randomBytes(32).toString("hex");
+  await db.query("INSERT INTO account_sessions(token_hash, account_id, expires_at) VALUES($1,$2,NOW()+INTERVAL '30 days')", [tokenHash(token), accountId]);
+  return token;
+}
+async function accountForToken(token) {
+  if (!dbReady || typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) return null;
+  const result = await db.query("SELECT a.id,a.username,a.email FROM account_sessions s JOIN accounts a ON a.id=s.account_id WHERE s.token_hash=$1 AND s.expires_at>NOW()", [tokenHash(token)]);
+  return result.rows[0] || null;
+}
+function jsonReply(res, status, data) {
+  res.writeHead(status, { "content-type":"application/json; charset=utf-8", "cache-control":"no-store", "x-content-type-options":"nosniff" });
+  res.end(JSON.stringify(data));
+}
+async function readJson(req) {
+  let raw = "";
+  for await (const chunk of req) {
+    raw += chunk;
+    if (raw.length > 8192) throw new Error("Request too large");
+  }
+  return JSON.parse(raw || "{}");
+}
+async function authApi(req, res, path) {
+  if (!dbReady) return jsonReply(res, 503, { error:"Account service is starting. Try again shortly." });
+  try {
+    if (path === "/api/signup" && req.method === "POST") {
+      const body = await readJson(req);
+      const username = String(body.username || "").trim();
+      const email = String(body.email || "").trim().toLowerCase();
+      const password = String(body.password || "");
+      if (!/^[a-zA-Z0-9_]{3,16}$/.test(username)) return jsonReply(res,400,{error:"Username must be 3–16 letters, numbers, or underscores."});
+      if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return jsonReply(res,400,{error:"Enter a valid email address."});
+      if (password.length < 10 || password.length > 128) return jsonReply(res,400,{error:"Password must be at least 10 characters."});
+      const salt = crypto.randomBytes(16);
+      const derived = await scrypt(password, salt, 64);
+      const passwordHash = salt.toString("hex") + ":" + derived.toString("hex");
+      let inserted;
+      try {
+        inserted = await db.query("INSERT INTO accounts(username,email,password_hash) VALUES($1,$2,$3) RETURNING id,username,email", [username,email,passwordHash]);
+      } catch (e) {
+        if (e.code === "23505") return jsonReply(res,409,{error:"That username or email is already registered. Log in instead."});
+        throw e;
+      }
+      const token = await issueSession(inserted.rows[0].id);
+      return jsonReply(res,201,{token,account:inserted.rows[0]});
+    }
+    if (path === "/api/login" && req.method === "POST") {
+      const body = await readJson(req);
+      const email = String(body.email || "").trim().toLowerCase();
+      const password = String(body.password || "");
+      const result = await db.query("SELECT id,username,email,password_hash FROM accounts WHERE email=$1", [email]);
+      const account = result.rows[0];
+      if (!account) return jsonReply(res,401,{error:"Email or password is incorrect."});
+      const [saltHex, hashHex] = account.password_hash.split(":");
+      const actual = await scrypt(password, Buffer.from(saltHex,"hex"), 64);
+      const expected = Buffer.from(hashHex,"hex");
+      if (actual.length !== expected.length || !crypto.timingSafeEqual(actual,expected)) return jsonReply(res,401,{error:"Email or password is incorrect."});
+      const token = await issueSession(account.id);
+      delete account.password_hash;
+      return jsonReply(res,200,{token,account});
+    }
+    if (path === "/api/me" && req.method === "GET") {
+      const account = await accountForToken(String(req.headers.authorization || "").replace(/^Bearer\s+/i,""));
+      return account ? jsonReply(res,200,{account}) : jsonReply(res,401,{error:"Please log in again."});
+    }
+    if (path === "/api/logout" && req.method === "POST") {
+      const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i,"");
+      if (/^[a-f0-9]{64}$/.test(token)) await db.query("DELETE FROM account_sessions WHERE token_hash=$1",[tokenHash(token)]);
+      return jsonReply(res,200,{ok:true});
+    }
+    return jsonReply(res,404,{error:"Not found."});
+  } catch (error) {
+    console.error("Account API error:", error.message);
+    return jsonReply(res,400,{error:"Could not process that request. Check your details and try again."});
+  }
+}
 
 function randomId() { return crypto.randomUUID(); }
 function randomInt(max) { return crypto.randomInt(max); }
@@ -373,7 +475,7 @@ function closeRoom(r) {
   }
 }
 
-function message(p, m) {
+async function message(p, m) {
   if (!m || typeof m !== "object") return;
   if (m.type === "join") {
     if (!p.room) {
@@ -447,7 +549,7 @@ function message(p, m) {
 }
 
 const server = http.createServer((req, res) => {
-  const path = (req.url || "/").split("?")[0];
+  const path = (req.url || "/").split("?")[0];\n  if (path.startsWith("/api/")) return void authApi(req, res, path);
   if (path === "/health") {
     res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
     return res.end(JSON.stringify({
@@ -503,4 +605,4 @@ wss.on("connection", ws => {
   });
 });
 
-server.listen(PORT, () => console.log("THE MAJORITY server listening on " + PORT + "; crowd size " + CROWD_SIZE));
+initDatabase().catch(error => { dbReady = false; console.error("Account database unavailable:", error.message); }).finally(() => { server.listen(PORT, () => console.log("THE MAJORITY server listening on " + PORT + "; crowd size " + CROWD_SIZE + "; accounts " + (dbReady ? "ready" : "unavailable"))); });
