@@ -319,6 +319,8 @@ body:before{opacity:.08;background-size:46px 46px}
 <button class="secondary-btn" id="logoutBtn" type="button">LOG OUT</button>
 </div>
 <button class="play-btn" id="playBtn" type="button" disabled>PLAY <span aria-hidden="true">↗</span></button>
+<button class="secondary-btn tester-btn" id="testerBtn" type="button" disabled>TESTER · PLAY WITHOUT LOGIN</button>
+<p class="small-note">Tester matches are for trying the game. Progress, wins and history are not saved.</p>
 <p class="small-note" id="authNote">Use an email you can access and keep your password private.</p>
 <p class="small-note" id="connectionNote">Connecting to the arena…</p>
 </div>
@@ -422,30 +424,31 @@ function show(id){screens.forEach(s=>$(s).classList.toggle("active",s===id));win
 let soundEnabled=true,musicEnabled=true,audioUnlocked=false,audioCtx=null,musicTimer=null,musicStep=0,musicNodes=[];function playTone(freq,duration,type,gain){if(!soundEnabled)return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type||"sine";o.frequency.value=freq;g.gain.setValueAtTime(gain||.025,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+duration);}catch{}}function soundEvent(k){if(k==="lock"){playTone(660,.08,"square");setTimeout(()=>playTone(880,.1,"sine"),75);}if(k==="reveal"){playTone(220,.2,"sawtooth");setTimeout(()=>playTone(330,.16,"triangle"),100);}if(k==="win"){[523,659,784].forEach((f,i)=>setTimeout(()=>playTone(f,.2,"triangle"),i*100));}if(k==="eliminate"){playTone(145,.28,"sawtooth");setTimeout(()=>playTone(90,.2,"sawtooth"),120);}}function musicNote(freq,duration,volume,wave="sine"){if(!audioCtx||!musicEnabled)return;const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=wave;o.frequency.value=freq;g.gain.setValueAtTime(.0001,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(volume,audioCtx.currentTime+.12);g.gain.setTargetAtTime(.0001,audioCtx.currentTime+duration*.72,.18);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+duration);musicNodes.push(o);if(musicNodes.length>36)musicNodes=musicNodes.slice(-24);}function musicBar(){if(!musicEnabled||!audioCtx)return;const chords=[[146.83,174.61,220],[116.54,146.83,174.61],[87.31,110,130.81],[130.81,164.81,196]];const chord=chords[Math.floor(musicStep/4)%chords.length],root=chord[0];musicNote(root/2,3.4,.025,"triangle");musicNote(chord[0],2.8,.012,"sine");musicNote(chord[1],2.8,.009,"sine");musicNote(chord[2],2.8,.008,"sine");const melody=[chord[2]*2,chord[1]*2,chord[0]*2,chord[1]*2];musicNote(melody[musicStep%4],.75,.012,"triangle");if(musicStep%2===0)musicNote(root*2,.18,.008,"sine");musicStep++;}function startMusic(){try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();musicEnabled=true;musicStep=0;if(musicTimer)clearInterval(musicTimer);musicBar();musicTimer=setInterval(musicBar,850);}catch{musicEnabled=false;toast("Music is not available in this browser.");}}
 function unlockAudio(){if(audioUnlocked)return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();audioUnlocked=true;if(musicEnabled)startMusic();}catch{}}
 document.addEventListener("pointerdown",unlockAudio,{once:true});document.addEventListener("keydown",unlockAudio,{once:true});function stopMusic(){musicEnabled=false;clearInterval(musicTimer);musicTimer=null;musicNodes.forEach(n=>{try{n.stop()}catch{}});musicNodes=[];}function renderQueueWarmup(w){if(!w||!w.question)return;$("queueQuestion").textContent=w.question;$("queueOptions").innerHTML="";(w.options||[]).forEach((v,i)=>{const e=document.createElement("div");e.className="queue-option";e.textContent=String.fromCharCode(65+i)+" · "+v;$("queueOptions").appendChild(e);});}function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2300);}
-function status(kind,msg){$("statusDot").className="status-dot "+kind;$("statusText").textContent=msg;$("playBtn").disabled=kind!=="online"||!authToken;$("connectionNote").textContent=kind==="online"?"Arena ready. Choose your mode and press PLAY.":kind==="offline"?"Connection lost. Reconnecting to the arena…":"Getting the arena ready… PLAY will unlock when the server is available.";}
+function status(kind,msg){$("statusDot").className="status-dot "+kind;$("statusText").textContent=msg;$("playBtn").disabled=kind!=="online"||!authToken;$("testerBtn").disabled=kind!=="online";$("connectionNote").textContent=kind==="online"?"Arena ready. Choose PLAY or TESTER.":kind==="offline"?"Connection lost. Reconnecting to the arena…":"Getting the arena ready…";}
 function wsAddress(){return (location.protocol==="https:"?"wss://":"ws://")+location.host;}
 function connectSocket(){
  if(!location.host){status("offline","OPEN THE GAME LINK");$("connectionNote").textContent="Open the hosted game link to connect to the arena.";return;}
  if(socket&&[WebSocket.OPEN,WebSocket.CONNECTING].includes(socket.readyState))return;
  clearTimeout(retryTimer);status("","CONNECTING TO ARENA");
  try{socket=new WebSocket(wsAddress());}catch(e){status("offline","CONNECTION ERROR");scheduleReconnect();return;}
- socket.onopen=()=>{retryDelay=1200;status("online","ARENA ONLINE");if(desiredJoin)joinMatch();};
+ socket.onopen=()=>{retryDelay=1200;status("online","ARENA ONLINE");if(desiredJoin)joinMatch(desiredJoinTester);};
  socket.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return;}handle(m);};
  socket.onerror=()=>{status("offline","CONNECTION ISSUE");};
  socket.onclose=()=>{clearInterval(timerInterval);status("offline","RECONNECTING");if(!manuallyCancelled)scheduleReconnect();};
 }
 function scheduleReconnect(){clearTimeout(retryTimer);retryTimer=setTimeout(()=>{retryDelay=Math.min(retryDelay*1.7,15000);connectSocket();},retryDelay);}
 function send(type,data={}){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type,...data}));}
-let queueStartedAt=0,queueClock=null;function updateQueueClock(){if(!queueStartedAt)return;const elapsed=Math.floor((Date.now()-queueStartedAt)/1000),mm=String(Math.floor(elapsed/60)).padStart(2,"0"),ss=String(elapsed%60).padStart(2,"0");$("queueCount").textContent="SEARCHING · "+mm+":"+ss;}function stopQueueClock(){clearInterval(queueClock);queueClock=null;queueStartedAt=0;}function joinMatch(){
- if(!authToken){toast("Please sign up or log in first.");return;}
+let desiredJoinTester=false;let queueStartedAt=0,queueClock=null;function updateQueueClock(){if(!queueStartedAt)return;const elapsed=Math.floor((Date.now()-queueStartedAt)/1000),mm=String(Math.floor(elapsed/60)).padStart(2,"0"),ss=String(elapsed%60).padStart(2,"0");$("queueCount").textContent="SEARCHING · "+mm+":"+ss;}function stopQueueClock(){clearInterval(queueClock);queueClock=null;queueStartedAt=0;}function joinMatch(tester=false){
+ if(!tester&&!authToken){toast("Please sign up or log in first.");return;}
+ desiredJoinTester=!!tester;
  if(!socket||socket.readyState!==WebSocket.OPEN){connectSocket();return;}
- playerName=$("accountUsername").textContent||"Player";
+ playerName=tester?"TESTER":($("accountUsername").textContent||"Player");
  desiredJoin=true;manuallyCancelled=false;matchMode=selectedMode;queueStartedAt=Date.now();clearInterval(queueClock);updateQueueClock();queueClock=setInterval(updateQueueClock,1000);
  $("queueTitle").textContent=selectedMode==="duel"?"FINDING YOUR DUEL":"FINDING THE CROWD";
  $("queueText").textContent=selectedMode==="duel"?"Finding an opponent. Most duel queues should start in a few seconds.":"Filling the crowd. This mode can take a little longer.";
  $("queueCount").textContent="SEARCHING · 00:00";renderQueueWarmup(null);$("queueQuestion").textContent="Your warm-up question is loading…";$("queueOptions").innerHTML="";show("queueScreen");
  selectedDifficulty=$("difficultySelect").value;selectedCategory=$("categorySelect").value;
- send("join",{mode:selectedMode,name:playerName,token:authToken,difficulty:selectedDifficulty,category:selectedCategory});
+ send("join",{mode:selectedMode,name:playerName,token:tester?"":authToken,tester:!!tester,difficulty:selectedDifficulty,category:selectedCategory});
 }
 function renderRoster(list){lastRoster=list||[];$("roster").innerHTML="";lastRoster.forEach((p,i)=>{const el=document.createElement("span"),streak=Number(p.streak)||0;el.className="player-chip"+(String(p.name).toUpperCase()==="YOU"?" you":"");if(streak>=10)el.classList.add("streak-10");else if(streak>=5)el.classList.add("streak-5");else if(streak>=3)el.classList.add("streak-3");else if(streak>0)el.classList.add("streak-1");el.textContent=(String(p.name).toUpperCase()==="YOU"?"◆ ":"")+p.name;if(streak>0){const mark=document.createElement("span");mark.className="streak-mark";mark.textContent="🔥"+streak;el.appendChild(mark);} $("roster").appendChild(el);});}
 function startTimer(n){clearInterval(timerInterval);secondsLeft=n;$("timer").textContent=secondsLeft;$("timerBar").style.width="100%";timerInterval=setInterval(()=>{secondsLeft=Math.max(0,secondsLeft-1);$("timer").textContent=secondsLeft;$("timerBar").style.width=(secondsLeft/n*100)+"%";if(secondsLeft===0)clearInterval(timerInterval);},1000);}
@@ -475,7 +478,8 @@ $("modeDuel").onclick=()=>{selectedMode="duel";$("modeDuel").classList.add("acti
 $("modeCrowd").onclick=()=>{selectedMode="crowd";$("modeCrowd").classList.add("active");$("modeDuel").classList.remove("active");};
 $("difficultySelect").onchange=()=>{selectedDifficulty=$("difficultySelect").value;};
 $("categorySelect").onchange=()=>{selectedCategory=$("categorySelect").value;};
-$("playBtn").onclick=()=>{desiredJoin=true;joinMatch();};
+$("playBtn").onclick=()=>{desiredJoin=true;joinMatch(false);};
+$("testerBtn").onclick=()=>{desiredJoin=true;joinMatch(true);};
 
 $("yesBtn").onclick=()=>{soundEvent("lock");send("vote",{vote:"YES"});};
 $("noBtn").onclick=()=>{soundEvent("lock");send("vote",{vote:"NO"});};
@@ -484,11 +488,11 @@ $("randomBtn").onclick=()=>{send("final-choice",{choice:"RANDOM"});$("repeatBtn"
 $("cancelQueue").onclick=()=>{desiredJoin=false;manuallyCancelled=true;stopQueueClock();clearInterval(timerInterval);const oldSocket=socket;socket=null;if(oldSocket&&oldSocket.readyState<2)oldSocket.close();show("home");status("offline","RECONNECTING");setTimeout(()=>{manuallyCancelled=false;connectSocket();},350);};
 function playAgain(){
  desiredJoin=true;
- if(!authToken){show("home");toast("Please log in to play again.");return;}
+ if(!authToken&&!desiredJoinTester){show("home");toast("Please log in or choose TESTER to play again.");return;}
  selectedMode=matchMode;
  $("modeDuel").classList.toggle("active",selectedMode==="duel");
  $("modeCrowd").classList.toggle("active",selectedMode==="crowd");
- if(socket&&socket.readyState===WebSocket.OPEN){joinMatch();}else{show("queueScreen");$("queueTitle").textContent="RECONNECTING TO THE ARENA";$("queueText").textContent="Restoring your connection for the rematch.";$("queueCount").textContent="PLEASE WAIT…";connectSocket();}
+ if(socket&&socket.readyState===WebSocket.OPEN){joinMatch(desiredJoinTester);}else{show("queueScreen");$("queueTitle").textContent="RECONNECTING TO THE ARENA";$("queueText").textContent="Restoring your connection for the rematch.";$("queueCount").textContent="PLEASE WAIT…";connectSocket();}
 }
 $("playAgainBtn").onclick=playAgain;
 $("outAgainBtn").onclick=playAgain;
