@@ -55,7 +55,8 @@ const QUESTION_ALTERNATIVES = ["watching tutorials","reading instructions","lear
 const FICTIONAL_PLACES = ["the floating city of Aerilon","the hidden kingdom of Veyra","a city beneath the ocean","the last human colony on Mars","a village inside a giant forest","the crystal moon of Nym","a kingdom where memories are currency","a future city run by friendly robots","an island that moves every night","a library between dimensions"];
 const FICTIONAL_POWERS = ["time travel","speaking every language","controlling the weather","visiting parallel worlds","understanding animals","entering your own dreams","teleporting once a day","seeing possible futures","talking to fictional characters"];
 const FICTIONAL_RULES = ["everyone must tell the truth for one day","people can swap skills for 24 hours","memories can be saved like files","everyone gets one extra hour each day","robots can vote in elections","dreams can be explored like virtual worlds","people can visit one alternate timeline","every home has a tiny friendly dragon","books can answer questions"];
-function makeDebateCandidate() {
+function makeDebateCandidate(difficulty = "mid", category = "all") {
+  if (category !== "all" && category !== "debate") return makeTopicDebate(difficulty, category);
   const pick = list => list[randomInt(list.length)];
   const templates = [
     () => "Should " + pick(QUESTION_GROUPS) + " have more opportunities to " + pick(QUESTION_ACTIVITIES) + "?",
@@ -94,9 +95,9 @@ async function reserveUniqueQuestion(candidate, type) {
   );
   return result.rowCount ? candidate : null;
 }
-async function nextUniqueDebateQuestion() {
+async function nextUniqueDebateQuestion(difficulty = "mid", category = "all") {
   for (let i = 0; i < 1000; i++) {
-    const q = await reserveUniqueQuestion({ q: makeDebateCandidate() }, "debate");
+    const q = await reserveUniqueQuestion({ q: makeDebateCandidate(difficulty, category) }, "debate");
     if (q) return q.q;
   }
   throw new Error("Fresh debate questions temporarily unavailable; refusing to repeat a question.");
@@ -136,7 +137,12 @@ function makeFictionQuiz() {
 function makeGeneratedQuiz() {
   return [makeArithmeticQuiz,makeLogicQuiz,makeRiddleQuiz,makeFictionQuiz][randomInt(4)]();
 }
-async function nextUniqueQuiz() {
+async function nextUniqueQuiz(difficulty = "mid", category = "all") {
+  for (let i = 0; i < 250; i++) {
+    const candidate = makeSubjectQuiz(difficulty, category);
+    const reserved = await reserveUniqueQuestion(candidate, "quiz");
+    if (reserved) return candidate;
+  }
   for (let i = 0; i < QUIZ.length * 2; i++) {
     const candidate = shufflePick(QUIZ);
     const reserved = await reserveUniqueQuestion(candidate, "quiz");
@@ -148,6 +154,128 @@ async function nextUniqueQuiz() {
     if (reserved) return candidate;
   }
   throw new Error("Could not reserve a fresh quiz question; repeats are disabled.");
+}
+
+
+const QUESTION_CATEGORIES = {
+  science: ["physics","chemistry","biology","astronomy","earth science","human body","experiments"],
+  math: ["arithmetic","algebra","geometry","fractions","percentages","number patterns","probability"],
+  history: ["ancient civilizations","world history","Indian history","inventions","exploration","historical events"],
+  geography: ["countries","capitals","continents","oceans","mountains","rivers","maps and flags"],
+  technology: ["computers","internet","programming","AI","cybersecurity","gadgets","space technology"],
+  gaming: ["Minecraft","Mario","Pokémon","The Legend of Zelda","Sonic","gaming history","game mechanics","PC gaming"],
+  sports: ["football","cricket","basketball","tennis","Olympics","athletics","sports rules"],
+  movies: ["cinema","animation","film genres","movie history","television","storytelling"],
+  anime: ["anime genres","manga","Japanese animation","anime storytelling","fictional worlds"],
+  music: ["music theory","instruments","genres","composers","rhythm","music history"],
+  literature: ["novels","poetry","authors","mythic stories","classic literature","language"],
+  mythology: ["Greek mythology","Norse mythology","Egyptian mythology","Indian mythology","world folklore"],
+  nature: ["animals","plants","ecosystems","oceans","weather","conservation"],
+  food: ["cuisines","ingredients","cooking methods","nutrition basics","food history"],
+  art: ["painting","sculpture","architecture","photography","design","cultural traditions"],
+  logic: ["riddles","deduction","patterns","sequences","lateral thinking","brain teasers"],
+  general: ["everyday knowledge","world facts","language","inventions","culture","people and places"]
+};
+const SUBJECT_QUIZ = {
+ easy: [
+  ["science","Which planet is called the Red Planet?",["Venus","Mars","Jupiter","Mercury"],1],
+  ["science","What do plants absorb from the air?",["Oxygen","Carbon dioxide","Helium","Hydrogen"],1],
+  ["geography","Which is the largest ocean?",["Atlantic","Indian","Pacific","Arctic"],2],
+  ["geography","How many continents are commonly taught in the world model?",["5","6","7","8"],2],
+  ["nature","Which is the largest living mammal?",["Elephant","Blue whale","Giraffe","Orca"],1],
+  ["technology","What does CPU commonly stand for?",["Central Processing Unit","Computer Power Utility","Core Program Unit","Central Print Unit"],0],
+  ["gaming","Which company created Mario?",["SEGA","Nintendo","Atari","Sony"],1],
+  ["gaming","In Minecraft, which block is commonly used to build a Nether portal?",["Stone","Obsidian","Dirt","Copper"],1],
+  ["sports","How many players from one cricket team are on the field in normal play?",["9","10","11","12"],2],
+  ["math","How many sides does a hexagon have?",["5","6","7","8"],1],
+  ["food","Which ingredient is used to make traditional bread rise?",["Yeast","Salt only","Pepper","Vinegar"],0],
+  ["music","Which instrument typically has black and white keys?",["Flute","Piano","Drum","Violin"],1],
+  ["anime","What is the Japanese term commonly used for animated works?",["Anime","Kabuki","Haiku","Origami"],0],
+  ["history","Which ancient civilization built the pyramids at Giza?",["Romans","Ancient Egyptians","Aztecs","Vikings"],1],
+  ["logic","What has keys but cannot open a door?",["A piano","A map","A clock","A river"],0]
+ ],
+ mid: [
+  ["science","What is the chemical symbol for sodium?",["So","Sd","Na","S"],2],
+  ["science","Which cell structure is best known for producing most cellular ATP?",["Nucleus","Mitochondrion","Ribosome","Cell wall"],1],
+  ["geography","Which strait separates India and Sri Lanka?",["Palk Strait","Bering Strait","Gibraltar","Malacca Strait"],0],
+  ["history","The Renaissance began in which present-day country?",["France","Italy","Germany","Spain"],1],
+  ["technology","What does HTTP stand for?",["HyperText Transfer Protocol","High Transfer Text Process","Host Terminal Transfer Program","Hyperlink Text Tracking Protocol"],0],
+  ["gaming","Which studio developed the original The Witcher game?",["CD Projekt Red","Bethesda","Valve","BioWare"],0],
+  ["gaming","In Pokémon games, which type is super effective against Water?",["Fire","Grass","Ground","Rock"],1],
+  ["sports","How many points is a successful free throw worth in basketball?",["1","2","3","4"],0],
+  ["math","What is the value of 15% of 200?",["20","25","30","35"],2],
+  ["anime","Which art form is the printed counterpart most closely associated with anime?",["Manga","Haiku","Ikebana","Noh"],0],
+  ["music","How many semitones are in an octave in standard Western equal temperament?",["8","10","12","14"],2],
+  ["nature","What is the process by which plants lose water vapour through leaves?",["Respiration","Transpiration","Fermentation","Pollination"],1],
+  ["literature","Who wrote the play Hamlet?",["Charles Dickens","William Shakespeare","Jane Austen","George Orwell"],1],
+  ["mythology","In Greek mythology, who is the god of the sea?",["Apollo","Ares","Poseidon","Hermes"],2],
+  ["logic","If all Bloops are Razzies and all Razzies are Lazzies, what must be true?",["All Lazzies are Bloops","All Bloops are Lazzies","No Bloops are Lazzies","Some Bloops are not Razzies"],1]
+ ],
+ hard: [
+  ["science","Which particle carries the electromagnetic force in the Standard Model?",["Gluon","Photon","W boson","Neutrino"],1],
+  ["science","What is the approximate pH of a neutral solution at 25°C?",["0","5","7","14"],2],
+  ["history","Which 1648 settlement is commonly associated with ending the Thirty Years' War?",["Treaty of Utrecht","Peace of Westphalia","Treaty of Versailles","Congress of Vienna"],1],
+  ["geography","Which country contains the greatest number of time zones when overseas territories are included?",["Russia","United States","France","China"],2],
+  ["technology","Which data structure follows the last-in, first-out principle?",["Queue","Stack","Tree","Graph"],1],
+  ["gaming","Which game popularised the phrase and mechanic 'the cake is a lie'?",["Portal","Half-Life 2","BioShock","The Stanley Parable"],0],
+  ["gaming","What is the name of the fictional continent where The Witcher stories mainly take place?",["Thedas","The Continent","Tamriel","Azeroth"],1],
+  ["sports","In cricket, what is the term for taking three wickets in three consecutive deliveries?",["Maiden","Hat-trick","Yorker","Googly"],1],
+  ["math","What is the derivative of x² with respect to x?",["x","2x","x²","2"],1],
+  ["anime","Which Japanese animation director created the film Spirited Away?",["Makoto Shinkai","Hayao Miyazaki","Satoshi Kon","Mamoru Hosoda"],1],
+  ["music","Which interval spans six semitones in equal temperament?",["Perfect fourth","Tritone","Perfect fifth","Major sixth"],1],
+  ["nature","What is the term for animals most active at dawn and dusk?",["Nocturnal","Diurnal","Crepuscular","Arboreal"],2],
+  ["literature","Who wrote One Hundred Years of Solitude?",["Jorge Luis Borges","Gabriel García Márquez","Pablo Neruda","Isabel Allende"],1],
+  ["mythology","In Norse mythology, what is the name of the world tree?",["Yggdrasil","Bifröst","Valhalla","Midgard"],0],
+  ["logic","A fair six-sided die is rolled twice. What is the probability of getting two sixes?",["1/6","1/12","1/18","1/36"],3]
+ ],
+ genius: [
+  ["science","Which symmetry principle is most directly connected to conservation of electric charge?",["Gauge invariance","Galilean relativity","Parity violation","Baryogenesis"],0],
+  ["science","In the Michaelis–Menten model, what does Km represent?",["Maximum velocity","Substrate concentration at half Vmax","Enzyme concentration","Activation energy"],1],
+  ["math","What is the residue of 1/z at z = 0?",["0","1","2πi","Undefined"],1],
+  ["math","What is the determinant of a 2×2 identity matrix?",["0","1","2","−1"],1],
+  ["technology","What is the time complexity of binary search on a sorted array?",["O(1)","O(log n)","O(n)","O(n log n)"],1],
+  ["technology","Which consensus mechanism requires validators to stake assets rather than perform proof-of-work mining?",["Proof of Stake","Proof of Work","Round robin","Flooding"],0],
+  ["history","Which 19th-century conference formalised the European partition of much of Africa?",["Congress of Berlin","Congress of Vienna","Treaty of Tordesillas","Yalta Conference"],0],
+  ["geography","Which oceanic feature is the deepest known point on Earth?",["Java Trench","Tonga Trench","Challenger Deep","Puerto Rico Trench"],2],
+  ["gaming","Which algorithm is classically used for shortest paths with non-negative edge weights?",["A* only","Dijkstra's algorithm","Bubble sort","Kruskal's algorithm"],1],
+  ["gaming","In game development, what does ECS commonly stand for?",["Entity Component System","Engine Control Script","Event Camera State","External Content Store"],0],
+  ["sports","In chess, what is the minimum number of moves required for a possible checkmate by a player from the starting position?",["2","3","4","5"],0],
+  ["literature","Which narrative technique begins a story in the middle of the action?",["Deus ex machina","In medias res","Anagnorisis","Peripeteia"],1],
+  ["music","Which tuning system divides an octave into 12 equal logarithmic ratios?",["Just intonation","Equal temperament","Pythagorean comma","Meantone only"],1],
+  ["nature","Which ecological concept describes the variety of life at genetic, species and ecosystem levels?",["Biomagnification","Biodiversity","Succession","Eutrophication"],1],
+  ["logic","If a statement is equivalent to its contrapositive, which form is logically equivalent to 'If P then Q'?",["If Q then P","If not P then not Q","If not Q then not P","P and Q"],2]
+ ]
+};
+function normalizeDifficulty(value){return ["easy","mid","hard","genius"].includes(String(value).toLowerCase())?String(value).toLowerCase():"mid";}
+function normalizeCategory(value){const v=String(value||"all").toLowerCase();return v==="all"||Object.prototype.hasOwnProperty.call(QUESTION_CATEGORIES,v)||v==="debate"?v:"all";}
+function makeSubjectQuiz(difficulty,category){
+ const level=normalizeDifficulty(difficulty),cat=normalizeCategory(category);
+ let pool=SUBJECT_QUIZ[level]||SUBJECT_QUIZ.mid;
+ if(cat!=="all"&&cat!=="debate")pool=pool.filter(item=>item[0]===cat);
+ if(pool.length){const item=shufflePick(pool);return {q:item[1],a:item[2],c:item[3]};}
+ return makeGeneratedQuiz();
+}
+function makeTopicDebate(difficulty,category){
+ const cat=normalizeCategory(category),level=normalizeDifficulty(difficulty);
+ const topics=cat==="all"?Object.keys(QUESTION_CATEGORIES):cat==="debate"?["fictional","opinion"]: [cat];
+ const topic=shufflePick(topics);
+ const subjects=QUESTION_CATEGORIES[topic]||["imaginary worlds","everyday choices","future technology"];
+ const subject=shufflePick(subjects);
+ const levelPrompt={
+  easy:["Would you like to learn more about ","Is it fun to explore ","Should everyone try "],
+  mid:["Should schools and communities teach more about ","Would society benefit from investing in ","Is understanding ","],
+  hard:["Should people critically evaluate new discoveries in ","Could advances in ","Is it ethical to use "],
+  genius:["Should experts reconsider established assumptions about ","Could a breakthrough in ","Is it possible to build a consistent theory of "]
+ }[level];
+ const prompt=shufflePick(levelPrompt);
+ const ending=prompt.endsWith(" ") ? "?" : " in the future?";
+ if(topic==="fictional"||topic==="opinion")return shufflePick([
+  "Would you explore a hidden world where memories can be traded?",
+  "Should a game let players change one rule after every level?",
+  "Would you choose to live in a city built beneath the ocean?",
+  "Is teamwork more valuable than individual skill in a final challenge?"
+ ]);
+ return prompt+subject+ending;
 }
 
 const BOT_NAMES = [
@@ -374,9 +502,11 @@ function botAct(p, type) {
 }
 function roomSize(mode) { return mode === "crowd" ? CROWD_SIZE : 2; }
 
-async function qadd(p, mode = "duel") {
+async function qadd(p, mode = "duel", settings = {}) {
   mode = mode === "crowd" ? "crowd" : "duel";
   p.mode = mode;
+  p.difficulty = normalizeDifficulty(settings.difficulty);
+  p.category = normalizeCategory(settings.category);
   const q = queues[mode];
   const target = roomSize(mode);
   if (!q.includes(p)) q.push(p);
@@ -389,7 +519,7 @@ async function qadd(p, mode = "duel") {
     waitHint: mode === "duel" ? "DUEL MATCHES USUALLY START IN A FEW SECONDS" : "CROWD MATCHES MAY TAKE A LITTLE LONGER"
   });
   // Warm-up arrives as its own event so it can render while the queue is active.
-  nextUniqueQuiz().then(warmup => {
+  nextUniqueQuiz(p.difficulty, p.category).then(warmup => {
     if (q.includes(p) && !p.room) {
       send(p, "queue-warmup", { warmup: { question: warmup.q, options: warmup.a } });
     }
@@ -419,6 +549,8 @@ function matchmake(mode) {
     const r = {
       id: randomId().slice(0, 8),
       mode,
+      difficulty: batch[0].difficulty || "mid",
+      category: batch[0].category || "all",
       players: new Map(batch.map(p => [p.id, p])),
       alive: new Set(batch.map(p => p.id)),
       phase: "vote",
@@ -451,7 +583,7 @@ async function startVote(r) {
   r.phase = "loading-question";
   r.round += 1;
   r.votes.clear();
-  try { r.question = await nextUniqueDebateQuestion(); }
+  try { r.question = await nextUniqueDebateQuestion(r.difficulty, r.category); }
   catch (error) { console.error("Question generation error:", error.message); closeRoom(r); return; }
   if (!rooms.has(r.id) || r.phase !== "loading-question") return;
   r.phase = "vote";
@@ -513,8 +645,8 @@ function resolveVote(r) {
 
 async function createFinalQuestions(r) {
   const ids = [...r.alive].slice(0, 2);
-  const qa = await nextUniqueQuiz();
-  const qb = await nextUniqueQuiz();
+  const qa = await nextUniqueQuiz(r.difficulty, r.category);
+  const qb = await nextUniqueQuiz(r.difficulty, r.category);
   r.final = { ids, qs: new Map([[ids[0], qa], [ids[1], qb]]), answers: new Map(), choices: new Map() };
 }
 async function startFinal(r) {
@@ -552,7 +684,7 @@ async function repeatFinal(r) {
   const [a, b] = r.final.ids;
   r.phase = "loading-final";
   let qa, qb;
-  try { qa = await nextUniqueQuiz(); qb = await nextUniqueQuiz(); }
+  try { qa = await nextUniqueQuiz(r.difficulty, r.category); qb = await nextUniqueQuiz(r.difficulty, r.category); }
   catch (error) { console.error("Repeat final question error:", error.message); closeRoom(r); return; }
   if (!rooms.has(r.id) || r.phase !== "loading-final") return;
   r.phase = "final";
@@ -580,7 +712,7 @@ function startQuick(r) {
 async function nextQuick(r) {
   if (r.phase !== "quick") return;
   let freshQuestion;
-  try { freshQuestion = await nextUniqueQuiz(); }
+  try { freshQuestion = await nextUniqueQuiz(r.difficulty, r.category); }
   catch (error) { console.error("Sudden-death question error:", error.message); closeRoom(r); return; }
   if (!rooms.has(r.id) || r.phase !== "quick") return;
   r.quick.q = freshQuestion;
@@ -660,7 +792,7 @@ async function message(p, m) {
       p.name = account.username;
       const prior = await db.query("SELECT streak_after FROM match_history WHERE account_id=$1 ORDER BY id DESC LIMIT 1",[account.id]);
       p.strike = Number(prior.rows[0]?.streak_after || 0);
-      await qadd(p, m.mode);
+      await qadd(p, m.mode, {difficulty:m.difficulty,category:m.category});
     }
     return;
   }
