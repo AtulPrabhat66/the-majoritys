@@ -263,7 +263,7 @@ function makeTopicDebate(difficulty,category){
  const subject=shufflePick(subjects);
  const levelPrompt={
   easy:["Would you like to learn more about ","Is it fun to explore ","Should everyone try "],
-  mid:["Should schools and communities teach more about ","Would society benefit from investing in ","Is understanding ","],
+  mid:["Should schools and communities teach more about ","Would society benefit from investing in ","Is understanding "],
   hard:["Should people critically evaluate new discoveries in ","Could advances in ","Is it ethical to use "],
   genius:["Should experts reconsider established assumptions about ","Could a breakthrough in ","Is it possible to build a consistent theory of "]
  }[level];
