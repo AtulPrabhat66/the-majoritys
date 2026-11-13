@@ -87,7 +87,7 @@ function makeDebateCandidate() {
   return templates[randomInt(templates.length)]();
 }
 async function reserveUniqueQuestion(candidate, type) {
-  const key = candidate.q.toLocaleLowerCase().replace(/\\s+/g, " ").trim();
+  const key = candidate.q.toLocaleLowerCase().replace(/\s+/g, " ").trim();
   const result = await db.query(
     "INSERT INTO used_questions(question_key,question_text,question_type) VALUES($1,$2,$3) ON CONFLICT(question_key) DO NOTHING RETURNING question_text",
     [key, candidate.q, type]
