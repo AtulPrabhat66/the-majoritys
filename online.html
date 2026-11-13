@@ -226,6 +226,41 @@ body:before{opacity:.08;background-size:46px 46px}
 @keyframes lossPulse{from{text-shadow:0 0 8px #ff2a5f22}to{text-shadow:0 0 28px #ff2a5f99}}
 @media(max-width:680px){.profile-stats{grid-template-columns:repeat(2,1fr)}.history-item{grid-template-columns:62px 1fr}.history-streak{grid-column:2}.top-actions{gap:5px!important}.top-actions .sound-toggle{padding:7px 8px;font-size:8px}}
 .question-settings{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:15px;padding:16px;background:#0d1520;border:1px solid #344154}.setting-block label{display:block;color:#00F0FF;font-size:9px;font-weight:900;letter-spacing:.18em;margin-bottom:8px}.question-select{width:100%;height:44px;padding:0 12px;background:#111d29;border:1px solid #46566c;color:#f5f7fb;font:800 12px 'DM Sans';letter-spacing:.06em;outline:none}.question-select:focus{border-color:#00F0FF}.settings-note{grid-column:1/-1;color:#8192a3;font-size:9px;margin:0}@media(max-width:520px){.question-settings{grid-template-columns:1fr}.settings-note{grid-column:1}}
+
+/* MULTI-COLOUR CHOICE SYSTEM */
+.option-btn{position:relative;overflow:hidden;min-height:66px;font-weight:800;transition:transform .18s,border-color .18s,background .18s,box-shadow .18s}
+.option-btn:nth-child(4n+1){--choice:#38bdf8;--choice-bg:#102b40}
+.option-btn:nth-child(4n+2){--choice:#c084fc;--choice-bg:#2a1c3b}
+.option-btn:nth-child(4n+3){--choice:#34d399;--choice-bg:#12352e}
+.option-btn:nth-child(4n+4){--choice:#fb923c;--choice-bg:#3a2518}
+.option-btn{border-color:color-mix(in srgb,var(--choice) 72%,#263447);background:linear-gradient(115deg,var(--choice-bg),#101722 82%);color:#f5f7fb;box-shadow:inset 3px 0 var(--choice),0 5px 18px #0003}
+.option-btn:hover:not(:disabled){border-color:var(--choice);background:linear-gradient(115deg,color-mix(in srgb,var(--choice-bg) 78%,var(--choice)),#172231 88%);box-shadow:inset 4px 0 var(--choice),0 0 22px color-mix(in srgb,var(--choice) 22%,transparent);transform:translateY(-2px)}
+.option-btn:disabled{opacity:.58;filter:saturate(.65)}
+.queue-option:nth-child(4n+1){border-color:#38bdf866;background:#102b40;color:#b9e7ff}
+.queue-option:nth-child(4n+2){border-color:#c084fc66;background:#2a1c3b;color:#e4c9ff}
+.queue-option:nth-child(4n+3){border-color:#34d39966;background:#12352e;color:#b6f5d9}
+.queue-option:nth-child(4n+4){border-color:#fb923c66;background:#3a2518;color:#ffd0a8}
+.mode#modeDuel{--mode-accent:#38bdf8}
+.mode#modeCrowd{--mode-accent:#c084fc}
+.mode#modeDuel .mode-number,.mode#modeDuel .mode-icon{color:#38bdf8}
+.mode#modeCrowd .mode-number,.mode#modeCrowd .mode-icon{color:#c084fc}
+.mode#modeDuel:hover,.mode#modeDuel.active{border-color:#38bdf8;background:linear-gradient(145deg,#123149,#111824);box-shadow:inset 0 0 0 1px #38bdf833,0 0 24px #38bdf81c}
+.mode#modeCrowd:hover,.mode#modeCrowd.active{border-color:#c084fc;background:linear-gradient(145deg,#2a1c3b,#111824);box-shadow:inset 0 0 0 1px #c084fc33,0 0 24px #c084fc1c}
+.choice-actions button:first-child{border-color:#38bdf8;color:#b9e7ff;background:linear-gradient(120deg,#123149,#172331)}
+.choice-actions button:last-child{border-color:#c084fc;color:#e4c9ff;background:linear-gradient(120deg,#2a1c3b,#201a2d)}
+.auth-tab#signupTab.active{border-color:#34d399;color:#9cf0c9;background:#12352e}
+.auth-tab#loginTab.active{border-color:#38bdf8;color:#b9e7ff;background:#102b40}
+.question-select option{background:#111824;color:#f5f7fb}
+#difficultySelect option:nth-child(1){background:#12352e;color:#9cf0c9}
+#difficultySelect option:nth-child(2){background:#102b40;color:#b9e7ff}
+#difficultySelect option:nth-child(3){background:#3a2518;color:#ffd0a8}
+#difficultySelect option:nth-child(4){background:#2a1c3b;color:#e4c9ff}
+#categorySelect option:nth-child(4n+1){background:#102b40;color:#b9e7ff}
+#categorySelect option:nth-child(4n+2){background:#2a1c3b;color:#e4c9ff}
+#categorySelect option:nth-child(4n+3){background:#12352e;color:#b6f5d9}
+#categorySelect option:nth-child(4n+4){background:#3a2518;color:#ffd0a8}
+@media(max-width:520px){.option-btn{min-height:58px;padding:14px 12px}}
+
 </style>
 </head>
 <body>
