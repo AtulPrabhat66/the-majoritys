@@ -297,14 +297,14 @@ body:before{opacity:.08;background-size:46px 46px}
 <div class="eyebrow">MATCH COMPLETE</div><div class="win-title" id="endTitle">VICTORY</div>
 <p id="endMessage">You survived the arena.</p>
 <div class="result-counts"><span>WIN STREAK <b id="streakValue">0</b></span></div>
-<button class="play-btn" id="playAgainBtn" type="button">RETURN TO THE ARENA ↗</button>
+<button class="play-btn" id="playAgainBtn" type="button">PLAY AGAIN · SAME MODE ↗</button>
 </div>
 </section>
 <section id="outScreen" class="screen">
 <div class="card arena-panel result-center">
 <div class="eyebrow">YOUR RUN HAS ENDED</div><div class="loss-title">ELIMINATED</div>
 <p id="outMessage">You did not survive this round.</p>
-<button class="play-btn" id="outAgainBtn" type="button">FIND ANOTHER MATCH ↗</button>
+<button class="play-btn" id="outAgainBtn" type="button">PLAY AGAIN · SAME MODE ↗</button>
 </div>
 </section>
 </main>
@@ -371,8 +371,16 @@ $("noBtn").onclick=()=>send("vote",{vote:"NO"});
 $("repeatBtn").onclick=()=>{send("final-choice",{choice:"REPEAT"});$("repeatBtn").disabled=true;$("randomBtn").disabled=true;};
 $("randomBtn").onclick=()=>{send("final-choice",{choice:"RANDOM"});$("repeatBtn").disabled=true;$("randomBtn").disabled=true;};
 $("cancelQueue").onclick=()=>{desiredJoin=false;manuallyCancelled=true;clearInterval(timerInterval);const oldSocket=socket;socket=null;if(oldSocket&&oldSocket.readyState<2)oldSocket.close();show("home");status("offline","RECONNECTING");setTimeout(()=>{manuallyCancelled=false;connectSocket();},350);};
-$("playAgainBtn").onclick=()=>{show("home");desiredJoin=false;connectSocket();};
-$("outAgainBtn").onclick=()=>{show("home");desiredJoin=false;connectSocket();};
+function playAgain(){
+ desiredJoin=true;
+ if(!authToken){show("home");toast("Please log in to play again.");return;}
+ selectedMode=matchMode;
+ $("modeDuel").classList.toggle("active",selectedMode==="duel");
+ $("modeCrowd").classList.toggle("active",selectedMode==="crowd");
+ if(socket&&socket.readyState===WebSocket.OPEN){joinMatch();}else{show("queueScreen");$("queueTitle").textContent="RECONNECTING TO THE ARENA";$("queueText").textContent="Restoring your connection for the rematch.";$("queueCount").textContent="PLEASE WAIT…";connectSocket();}
+}
+$("playAgainBtn").onclick=playAgain;
+$("outAgainBtn").onclick=playAgain;
 // Build a 50-pod arena field; pods are visual only and never expose bot identities.
 const podGrid=$("podGrid");
 if(podGrid){for(let i=0;i<50;i++){const pod=document.createElement("i");pod.className="pod";pod.style.setProperty("--delay",(Math.random()*3.5).toFixed(2)+"s");podGrid.appendChild(pod);}}
