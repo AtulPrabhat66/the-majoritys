@@ -180,15 +180,16 @@ function matchmake(mode) {
     };
     rooms.set(r.id, r);
     batch.forEach(p => { p.room = r.id; });
-    const usedNames = new Set();
-    const roster = batch.map((p, i) => {
-      let name = p.isBot ? p.name : "You";
-      if (usedNames.has(name)) name = "Player " + (i + 1);
-      usedNames.add(name);
-      return { name };
-    });
-    for (const p of batch) {
-      if (!p.isBot) send(p, "match-found", { mode, total: batch.length, roster });
+    for (const viewer of batch) {
+      if (viewer.isBot) continue;
+      const usedNames = new Set();
+      const roster = batch.map((p, i) => {
+        let name = p.id === viewer.id ? "YOU" : (p.isBot ? p.name : "Player " + String(i + 1).padStart(2, "0"));
+        if (usedNames.has(name)) name = "Player " + String(i + 1).padStart(2, "0");
+        usedNames.add(name);
+        return { name };
+      });
+      send(viewer, "match-found", { mode, total: batch.length, roster });
     }
     startVote(r);
   }
@@ -218,9 +219,12 @@ function resolveVote(r) {
   for (const id of nonVoters) r.alive.delete(id);
 
   if (yes === no) {
+    for (const id of nonVoters) safeSend(r.players.get(id), "eliminated", {
+      message: "You missed the vote and were removed from this match."
+    });
     cast(r, "round-result", {
       tied: true, yes, no, alive: r.alive.size,
-      message: "It's a tie. No side is eliminated. The round will repeat."
+      message: "It's a tie. Voters survive. The round will repeat."
     });
     if (r.alive.size < 2) {
       const survivor = [...r.alive][0];
