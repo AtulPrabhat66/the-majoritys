@@ -56,7 +56,7 @@ const FICTIONAL_PLACES = ["the floating city of Aerilon","the hidden kingdom of 
 const FICTIONAL_POWERS = ["time travel","speaking every language","controlling the weather","visiting parallel worlds","understanding animals","entering your own dreams","teleporting once a day","seeing possible futures","talking to fictional characters"];
 const FICTIONAL_RULES = ["everyone must tell the truth for one day","people can swap skills for 24 hours","memories can be saved like files","everyone gets one extra hour each day","robots can vote in elections","dreams can be explored like virtual worlds","people can visit one alternate timeline","every home has a tiny friendly dragon","books can answer questions"];
 function makeDebateCandidate(difficulty = "mid", category = "all") {
-  if (category !== "all" && category !== "debate") return makeTopicDebate(difficulty, category);
+  return makeTopicDebate(difficulty, category);
   const pick = list => list[randomInt(list.length)];
   const templates = [
     () => "Should " + pick(QUESTION_GROUPS) + " have more opportunities to " + pick(QUESTION_ACTIVITIES) + "?",
