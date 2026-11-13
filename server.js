@@ -236,6 +236,9 @@ function resolveVote(r) {
     return;
   }
 
+  for (const id of nonVoters) safeSend(r.players.get(id), "eliminated", {
+    message: "You missed the vote and were removed from this match."
+  });
   const majority = yes > no ? "YES" : "NO";
   const eliminated = [];
   for (const [id, vote] of r.votes) {
