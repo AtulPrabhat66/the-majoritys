@@ -175,6 +175,18 @@ async function initDatabase() {
   )`);
   await db.query("CREATE INDEX IF NOT EXISTS account_sessions_expiry_idx ON account_sessions(expires_at)");
   await db.query(`CREATE TABLE IF NOT EXISTS used_questions (question_key TEXT PRIMARY KEY, question_text TEXT NOT NULL, question_type TEXT NOT NULL, used_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+  await db.query(`CREATE TABLE IF NOT EXISTS match_history (
+    id BIGSERIAL PRIMARY KEY,
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    mode VARCHAR(12) NOT NULL,
+    outcome VARCHAR(8) NOT NULL,
+    reason VARCHAR(48) NOT NULL,
+    rounds INTEGER NOT NULL DEFAULT 0,
+    players_count INTEGER NOT NULL DEFAULT 2,
+    streak_after INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`);
+  await db.query("CREATE INDEX IF NOT EXISTS match_history_account_idx ON match_history(account_id, id DESC)");
   dbReady = true;
 }
 function tokenHash(token) { return crypto.createHash("sha256").update(token).digest("hex"); }
@@ -238,6 +250,22 @@ async function authApi(req, res, path) {
       const token = await issueSession(account.id);
       delete account.password_hash;
       return jsonReply(res,200,{token,account});
+    }
+    if (path === "/api/profile" && req.method === "GET") {
+      const account = await accountForToken(String(req.headers.authorization || "").replace(/^Bearer\\s+/i,""));
+      if (!account) return jsonReply(res,401,{error:"Please log in again."});
+      const [stats, history] = await Promise.all([
+        db.query(`SELECT COUNT(*)::int AS matches,
+          COUNT(*) FILTER (WHERE outcome='win')::int AS wins,
+          COUNT(*) FILTER (WHERE outcome='loss')::int AS losses,
+          COALESCE(MAX(streak_after),0)::int AS best_streak,
+          COALESCE((SELECT streak_after FROM match_history WHERE account_id=$1 ORDER BY id DESC LIMIT 1),0)::int AS current_streak,
+          COUNT(*) FILTER (WHERE outcome='win' AND mode='duel')::int AS duel_wins,
+          COUNT(*) FILTER (WHERE outcome='win' AND mode='crowd')::int AS crowd_wins
+          FROM match_history WHERE account_id=$1`,[account.id]),
+        db.query("SELECT id,mode,outcome,reason,rounds,players_count,streak_after,created_at FROM match_history WHERE account_id=$1 ORDER BY id DESC LIMIT 30",[account.id])
+      ]);
+      return jsonReply(res,200,{account:{username:account.username},stats:stats.rows[0],history:history.rows});
     }
     if (path === "/api/me" && req.method === "GET") {
       const account = await accountForToken(String(req.headers.authorization || "").replace(/^Bearer\s+/i,""));
@@ -409,7 +437,7 @@ function matchmake(mode) {
         let name = p.id === viewer.id ? "YOU" : (p.name || (p.isBot ? p.name : "Player " + String(i + 1).padStart(2, "0")));
         if (usedNames.has(name)) name = "Player " + String(i + 1).padStart(2, "0");
         usedNames.add(name);
-        return { name };
+        return { name, streak: Number(p.strike) || 0 };
       });
       send(viewer, "match-found", { mode, total: batch.length, roster });
     }
@@ -444,9 +472,7 @@ function resolveVote(r) {
   for (const id of nonVoters) r.alive.delete(id);
 
   if (yes === no) {
-    for (const id of nonVoters) safeSend(r.players.get(id), "eliminated", {
-      message: "You missed the vote and were removed from this match."
-    });
+    for (const id of nonVoters) eliminatePlayer(r.players.get(id),r,"You missed the vote and were removed from this match.","missed-vote");
     cast(r, "round-result", {
       tied: true, yes, no, alive: r.alive.size,
       message: "It's a tie. Voters survive. The round will repeat."
@@ -461,9 +487,7 @@ function resolveVote(r) {
     return;
   }
 
-  for (const id of nonVoters) safeSend(r.players.get(id), "eliminated", {
-    message: "You missed the vote and were removed from this match."
-  });
+  for (const id of nonVoters) eliminatePlayer(r.players.get(id),r,"You missed the vote and were removed from this match.","missed-vote");
   const majority = yes > no ? "YES" : "NO";
   const eliminated = [];
   for (const [id, vote] of r.votes) {
@@ -477,9 +501,7 @@ function resolveVote(r) {
     alive: r.alive.size,
     message: majority + " received the majority. " + eliminated.length + " player(s) eliminated."
   });
-  for (const id of eliminated) safeSend(r.players.get(id), "eliminated", {
-    message: "You were on the smaller side. This match is over for you."
-  });
+  for (const id of eliminated) eliminatePlayer(r.players.get(id),r,"You were on the smaller side. This match is over for you.","minority-vote");
   if (r.alive.size < 2) {
     const winner = [...r.alive][0];
     if (winner) finish(r, winner, "last-player-standing");
@@ -582,28 +604,49 @@ async function nextQuick(r) {
     r.timer = setTimeout(() => nextQuick(r), 1200);
   }, 12000);
 }
-function finish(r, winner, reason) {
+async function recordPlayerMatch(p, outcome, reason, r) {
+  if (!p || p.isBot || !p.account?.id) return Number(p?.strike) || 0;
+  const saved = await db.query(`WITH previous AS (
+    SELECT streak_after FROM match_history WHERE account_id=$1 ORDER BY id DESC LIMIT 1
+  )
+  INSERT INTO match_history(account_id,mode,outcome,reason,rounds,players_count,streak_after)
+  VALUES($1,$2,$3,$4,$5,$6,
+    CASE WHEN $3='win' THEN COALESCE((SELECT streak_after FROM previous),0)+1 ELSE 0 END
+  ) RETURNING streak_after`,
+  [p.account.id,r.mode,outcome,String(reason||"match").slice(0,48),r.round,r.players.size]);
+  p.strike = Number(saved.rows[0]?.streak_after) || 0;
+  return p.strike;
+}
+function eliminatePlayer(p,r,message,reason) {
+  if (!p) return;
+  if (p.room === r.id) p.room = null;
+  if (p.isBot) return;
+  recordPlayerMatch(p,"loss",reason,r).catch(error=>console.error("Could not save match loss:",error.message))
+    .finally(()=>safeSend(p,"eliminated",{message:message||"Your run has ended."}));
+}
+async function finish(r, winner, reason) {
   if (!rooms.has(r.id) || r.phase === "finished") return;
   clearTimeout(r.timer);
   r.phase = "finished";
-  for (const [id, p] of r.players) {
-    p.room = null;
-    if (id === winner) {
-      p.strike = (p.strike || 0) + 1;
-      send(p, "match-result", { winner: true, strike: p.strike, reason });
-    } else {
-      p.strike = 0;
-      send(p, "match-result", { winner: false, strike: 0, reason });
-    }
-  }
+  const activeIds=[...r.alive];
+  await Promise.all(activeIds.map(async id=>{
+    const p=r.players.get(id);if(!p)return;
+    const won=id===winner;
+    if(p.room===r.id)p.room=null;
+    try { await recordPlayerMatch(p,won?"win":"loss",reason,r); }
+    catch(error){console.error("Could not save match result:",error.message);p.strike=won?(Number(p.strike)||0)+1:0;}
+    send(p,"match-result",{winner:won,strike:Number(p.strike)||0,reason});
+  }));
   r.timer = setTimeout(() => closeRoom(r), 8000);
 }
 function closeRoom(r) {
   clearTimeout(r.timer);
   rooms.delete(r.id);
   for (const p of r.players.values()) {
-    p.room = null;
-    send(p, "match-closed", {});
+    if (p.room === r.id) {
+      p.room = null;
+      send(p, "match-closed", {});
+    }
   }
 }
 
@@ -615,6 +658,8 @@ async function message(p, m) {
       if (!account) return send(p, "error", { message: "Please sign up or log in before playing." });
       p.account = account;
       p.name = account.username;
+      const prior = await db.query("SELECT streak_after FROM match_history WHERE account_id=$1 ORDER BY id DESC LIMIT 1",[account.id]);
+      p.strike = Number(prior.rows[0]?.streak_after || 0);
       await qadd(p, m.mode);
     }
     return;
@@ -721,6 +766,7 @@ wss.on("connection", ws => {
     }
     const r = p.room && rooms.get(p.room);
     if (!r || r.phase === "finished") return;
+    if (p.account?.id) recordPlayerMatch(p,"loss","disconnected",r).catch(error=>console.error("Could not save disconnect:",error.message));
     r.alive.delete(p.id);
     r.votes.delete(p.id);
     if (r.final && r.final.ids.includes(p.id)) {
